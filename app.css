@@ -2283,7 +2283,7 @@ mjx-container *{color:#ffffff !important;fill:#ffffff !important}
 :root[data-theme="dark"] .marks-detail-card-body .qimg,
 :root[data-theme="dark"] #prkDetailCardContainer img,
 :root[data-theme="dark"] .marks-q-body img,
-:root[data-theme="dark"] .marks-q-body svg {
+:root[data-theme="dark"] .marks-q-body svg:not(mjx-container svg):not(.marks-opt-chip svg) {
   filter: invert(1) hue-rotate(180deg) brightness(1.05) !important;
   -webkit-filter: invert(1) hue-rotate(180deg) brightness(1.05) !important;
   mix-blend-mode: normal !important;
@@ -2303,7 +2303,7 @@ mjx-container *{color:#ffffff !important;fill:#ffffff !important}
   :root:not([data-theme="light"]) .marks-detail-card-body .qimg,
   :root:not([data-theme="light"]) #prkDetailCardContainer img,
   :root:not([data-theme="light"]) .marks-q-body img,
-  :root:not([data-theme="light"]) .marks-q-body svg {
+  :root:not([data-theme="light"]) .marks-q-body svg:not(mjx-container svg):not(.marks-opt-chip svg) {
     filter: invert(1) hue-rotate(180deg) brightness(1.05) !important;
     -webkit-filter: invert(1) hue-rotate(180deg) brightness(1.05) !important;
     mix-blend-mode: normal !important;
@@ -2484,6 +2484,16 @@ mjx-container *{color:#ffffff !important;fill:#ffffff !important}
 }
 
 /* Dark Mode Pure White Option Text & MathJax */
+mjx-container,
+mjx-container *,
+mjx-container svg,
+.marks-options-grid svg,
+.marks-opt-chip svg,
+.marks-opt-text svg {
+  filter: none !important;
+  -webkit-filter: none !important;
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .marks-opt-chip,
   :root:not([data-theme="light"]) .marks-opt-text,
@@ -2498,12 +2508,16 @@ mjx-container *{color:#ffffff !important;fill:#ffffff !important}
   :root:not([data-theme="light"]) .qpopts li,
   :root:not([data-theme="light"]) .qpopts li * {
     color: #ffffff !important;
+    filter: none !important;
+    -webkit-filter: none !important;
   }
   :root:not([data-theme="light"]) mjx-container,
   :root:not([data-theme="light"]) mjx-container *,
   :root:not([data-theme="light"]) mjx-container svg {
     color: #ffffff !important;
     fill: #ffffff !important;
+    filter: none !important;
+    -webkit-filter: none !important;
   }
 }
 :root[data-theme="dark"] .marks-opt-chip,
@@ -2526,6 +2540,8 @@ mjx-container *{color:#ffffff !important;fill:#ffffff !important}
 #scrExam[data-xtheme="dark"] mjx-container,
 #scrExam[data-xtheme="dark"] mjx-container * {
   color: #ffffff !important;
+  filter: none !important;
+  -webkit-filter: none !important;
 }
 :root[data-theme="dark"] mjx-container,
 :root[data-theme="dark"] mjx-container *,
@@ -2533,6 +2549,8 @@ mjx-container *{color:#ffffff !important;fill:#ffffff !important}
 #scrExam[data-xtheme="dark"] mjx-container svg {
   color: #ffffff !important;
   fill: #ffffff !important;
+  filter: none !important;
+  -webkit-filter: none !important;
 }
 
 
