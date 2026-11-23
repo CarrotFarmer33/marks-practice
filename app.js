@@ -660,8 +660,8 @@ function openPracticeList(initialOpts){
       else prkState.sourceGroup = 'fiitjee';
     }
   }
-  const availableSubjs = SUBJ.filter(s => DB.some(q => q.paper !== 'allen' && q.subject === s));
-  if(!availableSubjs.includes(prkState.subj)) prkState.subj = availableSubjs[0] || 'Physics';
+  const availableSubjs = SUBJ;
+  if(!availableSubjs.includes(prkState.subj)) prkState.subj = 'Physics';
 
   ensureSubjectLoaded(prkState.subj).then(() => {
     if($('#scrPracticeList') && !$('#scrPracticeList').hidden) renderPracticeScreen();
@@ -700,7 +700,7 @@ function applyPrkChapSearch(){
 }
 
 function renderPracticeSidebar(){
-  const availableSubjs = SUBJ.filter(s => DB.some(q => q.paper !== 'allen' && q.subject === s));
+  const availableSubjs = SUBJ;
   const subjBox = $('#prkSubjList');
   if(subjBox){
     subjBox.innerHTML = availableSubjs.map(s => {
@@ -1319,8 +1319,12 @@ function renderPracticeMain(){
   if(!cont) return;
 
   if(!qs.length){
+    const isLoading = loadingSubjectPromises[prkState.subj] || (!loadedSubjects.has(prkState.subj) && DB.filter(q => q.subject === prkState.subj).length === 0);
+    const msg = isLoading
+      ? '⏳ Loading ' + prkState.subj + ' questions... Please wait a moment.'
+      : 'No questions match the current filters. Adjust your filters or switch chapters.';
     cont.innerHTML = '<div class="muted" style="text-align:center;padding:48px 16px;background:var(--surface);border:1px solid var(--line);border-radius:6px">' +
-      'No questions match the current filters. Adjust your filters or switch chapters.</div>';
+      msg + '</div>';
     return;
   }
 
@@ -1565,7 +1569,6 @@ function renderPracticeDetailView(){
   }
 
   // Start question stopwatch & reset zoom (HCV questions default to 75%, others default to 100%)
-  const isHcv = q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_'));
   const defaultZoom = isHcv ? 75 : 100;
   setPrkZoom(defaultZoom);
   startPrkQTimer();
