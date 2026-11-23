@@ -937,7 +937,7 @@ function renderPracticeSidebar(){
 
     // 1. FIITJEE Dropdown Menu
     if(fiitjeeQs.length > 0){
-      const keys = Object.keys(byChFiitjee).sort((a,b) => svOrder(prkState.subj, a) - svOrder(prkState.subj, b) || a.localeCompare(b));
+      const keys = Object.keys(byChFiitjee).sort((a,b) => (TAXONOMY_CHAPTER_ORDER[a] || 99) - (TAXONOMY_CHAPTER_ORDER[b] || 99) || a.localeCompare(b));
       const isAllFiitjee = !prkState.chap && prkState.sourceGroup === 'fiitjee';
       const fjAtt = fiitjeeQs.filter(q => ansMap[q.id] && ansMap[q.id].status !== 'skip').length;
       const fjPct = fiitjeeQs.length ? Math.min(100, Math.round(fjAtt / fiitjeeQs.length * 100)) : 0;
