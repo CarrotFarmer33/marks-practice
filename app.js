@@ -10,6 +10,8 @@ const TRANK = {single:0, assertion_reason:0, numerical:1, multi:2, multiple:2, p
 
 
 const QTS = { single: 'MCQ', multi: 'MSQ', numerical: 'NAT', paragraph: 'Comprehension', matrix: 'Matrix' };
+const STAR = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l1.9 4.2 4.6.5-3.4 3.1 1 4.5L8 11.5 3.9 13.8l1-4.5L1.5 6.2l4.6-.5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+
 
 const fmtAns = (q, a) => {
   if(a == null || a === '') return '—';
@@ -243,6 +245,14 @@ function extractMatchOptionsFromText(text){
   }
   return null;
 }
+function hasAnswerKey(q){
+  const k = q.answer!=null?q.answer:(q.correct_answer!=null?q.correct_answer:(q.correct!=null?q.correct:q.key));
+  if(k == null || k === '') return false;
+  if(Array.isArray(k)) return k.length > 0;
+  if(typeof k === 'object') return Object.keys(k).length > 0;
+  return true;
+}
+
 function normQuestion(q,i,defSubject){
   if(!q || typeof q!=='object') return null;
   if(q._isNormalized) return q;
@@ -429,14 +439,15 @@ async function ensureSubjectLoaded(subject){
       if(subject === 'Physics'){
         const remote = isLocal ? '' : (conf.databaseUrl || '').trim();
         fileUrls = [
-          ['database.json', remote, 'https://raw.githubusercontent.com/CarrotFarmer33/aitsver2/main/database.json'],
-          ['hcv_database.json', 'public/hcv_database.json', 'https://raw.githubusercontent.com/CarrotFarmer33/aitsver2/main/hcv_database.json', 'https://raw.githubusercontent.com/CarrotFarmer33/aitsver2/main/public/hcv_database.json'],
-          ['qrp_database.json', 'public/qrp_database.json', (conf.qrpUrl || '').trim(), 'https://raw.githubusercontent.com/CarrotFarmer33/aitsver2/main/qrp_database.json']
+          ['priority_database.json'],
+          ['hcv_database.json', 'public/hcv_database.json'],
+          ['qrp_database.json', 'public/qrp_database.json', (conf.qrpUrl || '').trim()],
+          ['database.json', remote, 'https://raw.githubusercontent.com/CarrotFarmer33/aitsver2/main/database.json']
         ];
       } else if(subject === 'Chemistry'){
         const chemRemote = (conf.chemistryUrl || '').trim();
         fileUrls = [
-          ['chemistry_database.json', chemRemote, 'https://raw.githubusercontent.com/CarrotFarmer33/aitsver2/main/chemistry_database.json'],
+          ['chemistry_main_database.json', 'chemistry_database.json', chemRemote, 'https://raw.githubusercontent.com/CarrotFarmer33/aitsver2/main/chemistry_database.json'],
           ['allenjee_database.json', (conf.allenJeeUrl || '').trim(), 'https://raw.githubusercontent.com/CarrotFarmer33/aitsver2/main/public/allenjee_database.json'],
           ['allenchem_database.json', (conf.allenChemUrl || '').trim(), 'https://raw.githubusercontent.com/CarrotFarmer33/aitsver2/main/public/allenchem_database.json'],
           ['mschouhan_database.json', 'https://raw.githubusercontent.com/CarrotFarmer33/aitsver2/main/public/mschouhan_database.json'],
@@ -446,8 +457,8 @@ async function ensureSubjectLoaded(subject){
         const mathAdvRemote = (conf.mathsAdvancedUrl || '').trim();
         const mathMainRemote = (conf.mathsMainUrl || '').trim();
         fileUrls = [
-          ['maths_advanced_database.json', mathAdvRemote, 'https://raw.githubusercontent.com/CarrotFarmer33/aitsver2/main/maths_advanced_database.json'],
-          ['maths_main_database.json', mathMainRemote, 'https://raw.githubusercontent.com/CarrotFarmer33/aitsver2/main/maths_main_database.json']
+          ['maths_main_database.json', mathMainRemote, 'https://raw.githubusercontent.com/CarrotFarmer33/aitsver2/main/maths_main_database.json'],
+          ['maths_advanced_database.json', mathAdvRemote, 'https://raw.githubusercontent.com/CarrotFarmer33/aitsver2/main/maths_advanced_database.json']
         ];
       }
 
@@ -457,6 +468,9 @@ async function ensureSubjectLoaded(subject){
             const raw = await fetchCachedJson(u);
             if(raw){
               mergeSubjectQuestions(raw, subject);
+              if($('#scrPracticeList') && !$('#scrPracticeList').hidden && prkState.subj === subject){
+                renderPracticeScreen();
+              }
               break;
             }
           } catch(e) {
@@ -514,7 +528,8 @@ function show(id){
   ['scrPracticeList','scrPracticeDetail'].forEach(s=>{ const el=$('#'+s); if(el) el.hidden = s!==id; });
   if(id !== 'scrPracticeDetail' && typeof stopPrkQTimer === 'function') stopPrkQTimer();
   if(id === 'scrTestBuilder' && typeof renderTbArchive === 'function') renderTbArchive();
-  toggleAcc(false); hideTip();
+  if(typeof toggleAcc === 'function') toggleAcc(false);
+  if(typeof hideTip === 'function') hideTip();
   window.scrollTo(0,0);
 }
 
