@@ -335,10 +335,13 @@ async function resolveZipImage(img){
           img.style.maxWidth = '100%';
         }
       } else {
-        const z = (typeof prkCurrentZoom !== 'undefined' && prkCurrentZoom > 100) ? (prkCurrentZoom + '%') : '100%';
+        const isHcvImg = /laws_of_motion|circular_motion|work_power|rotational|gravitation|fluid|thermo|heat|shm|waves|electrostatics|gravitation|capacitance|current_electricity|magnetism|emi|ac|optics|modern_physics|hcv/i.test(fileName);
+        const defZ = isHcvImg ? 75 : 100;
+        const currentZ = (typeof prkCurrentZoom !== 'undefined') ? prkCurrentZoom : defZ;
+        const z = currentZ + '%';
         img.style.setProperty('width', z, 'important');
-        img.style.setProperty('max-width', (typeof prkCurrentZoom !== 'undefined' && prkCurrentZoom > 100) ? 'none' : '100%', 'important');
-        img.style.setProperty('min-width', (typeof prkCurrentZoom !== 'undefined' && prkCurrentZoom > 100) ? z : '100%', 'important');
+        img.style.setProperty('max-width', (currentZ > 100) ? 'none' : z, 'important');
+        img.style.setProperty('min-width', (currentZ > 100) ? z : '0', 'important');
         img.style.height = 'auto';
         img.style.display = 'block';
         img.style.margin = '14px auto';
@@ -368,10 +371,13 @@ async function resolveZipImage(img){
       img.style.clipPath = 'none';
       img.style.webkitClipPath = 'none';
     } else if(!isTb){
-      const z = (typeof prkCurrentZoom !== 'undefined' && prkCurrentZoom > 100) ? (prkCurrentZoom + '%') : '100%';
+      const isHcvImg = /laws_of_motion|circular_motion|work_power|rotational|gravitation|fluid|thermo|heat|shm|waves|electrostatics|gravitation|capacitance|current_electricity|magnetism|emi|ac|optics|modern_physics|hcv/i.test(fileName);
+      const defZ = isHcvImg ? 75 : 100;
+      const currentZ = (typeof prkCurrentZoom !== 'undefined') ? prkCurrentZoom : defZ;
+      const z = currentZ + '%';
       img.style.setProperty('width', z, 'important');
-      img.style.setProperty('max-width', (typeof prkCurrentZoom !== 'undefined' && prkCurrentZoom > 100) ? 'none' : '100%', 'important');
-      img.style.setProperty('min-width', (typeof prkCurrentZoom !== 'undefined' && prkCurrentZoom > 100) ? z : '100%', 'important');
+      img.style.setProperty('max-width', (currentZ > 100) ? 'none' : z, 'important');
+      img.style.setProperty('min-width', (currentZ > 100) ? z : '0', 'important');
       img.style.height = 'auto';
       img.style.display = 'block';
       img.style.margin = '14px auto';

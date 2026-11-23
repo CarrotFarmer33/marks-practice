@@ -1564,8 +1564,10 @@ function renderPracticeDetailView(){
     typeset(cont);
   }
 
-  // Start question stopwatch & reset zoom
-  setPrkZoom(100);
+  // Start question stopwatch & reset zoom (HCV questions default to 75%, others default to 100%)
+  const isHcv = q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_'));
+  const defaultZoom = isHcv ? 75 : 100;
+  setPrkZoom(defaultZoom);
   startPrkQTimer();
 }
 
@@ -1619,9 +1621,11 @@ function renderPracticeCardHtml(q, idx){
   }
 
   // Zoom Bar (Smooth in-card zooming)
+  const isHcvCard = q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_'));
+  const defZoomVal = isHcvCard ? 75 : 100;
   const zoomBarHtml = '<div class="marks-zoom-bar">' +
     '<button type="button" class="marks-zoom-btn" id="prkZoomOutBtn" title="Zoom Out">&minus;</button>' +
-    '<span id="prkZoomLevelText" style="font-size:12px;font-family:monospace;font-weight:600">100%</span>' +
+    '<span id="prkZoomLevelText" style="font-size:12px;font-family:monospace;font-weight:600">' + defZoomVal + '%</span>' +
     '<button type="button" class="marks-zoom-btn" id="prkZoomInBtn" title="Zoom In">&plus;</button>' +
     '<button type="button" class="marks-zoom-btn" id="prkZoomResetBtn" title="Reset Zoom" style="font-size:11px;padding:3px 8px">Reset</button>' +
   '</div>';
@@ -1724,7 +1728,7 @@ function renderPracticeCardHtml(q, idx){
 let prkCurrentZoom = 100;
 
 function setPrkZoom(zoomPercent){
-  prkCurrentZoom = Math.max(75, Math.min(300, zoomPercent));
+  prkCurrentZoom = Math.max(50, Math.min(300, zoomPercent));
   const el = document.getElementById('prkZoomLevelText');
   if(el) el.textContent = prkCurrentZoom + '%';
   const svgs = document.querySelectorAll('#prkDetailCardContainer .vector-inline-svg, #prkDetailCardContainer .qimg');
@@ -1736,8 +1740,8 @@ function setPrkZoom(zoomPercent){
     } else {
       const zStr = prkCurrentZoom + '%';
       item.style.setProperty('width', zStr, 'important');
-      item.style.setProperty('max-width', 'none', 'important');
-      item.style.setProperty('min-width', zStr, 'important');
+      item.style.setProperty('max-width', (prkCurrentZoom > 100) ? 'none' : zStr, 'important');
+      item.style.setProperty('min-width', (prkCurrentZoom > 100) ? zStr : '0', 'important');
     }
     item.style.transform = 'none';
     item.style.transition = 'width 0.15s ease, min-width 0.15s ease';
@@ -1931,7 +1935,9 @@ document.addEventListener('click', e => {
     setPrkZoom(prkCurrentZoom - 25);
   }
   else if(b.id === 'prkZoomResetBtn'){
-    setPrkZoom(100);
+    const q = prkFilteredList[prkCurrentDetailIdx];
+    const isHcv = q && (q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_')));
+    setPrkZoom(isHcv ? 75 : 100);
   }
   else if(b.closest('#prkDetailBmBtn')){
     if(!prkFilteredList.length) return;
