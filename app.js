@@ -9,6 +9,66 @@ const TYPES = {single:'Single correct', numerical:'Numerical', multi:'Multiple c
 const QT = {single:'Multiple Choice', numerical:'Numerical Value', multi:'Multiple Choice (one or more correct)', paragraph:'Comprehension', matrix:'Matrix Match'};
 const SECLBL = {single:'MCQ', numerical:'Numerical', multi:'Multiple Correct', paragraph:'Comprehension', matrix:'Matrix Match'};
 const TRANK = {single:0, assertion_reason:0, numerical:1, multi:2, multiple:2, paragraph:3, comprehension:3, matrix:4, column_match:4};
+
+
+const QTS = { single: 'MCQ', multi: 'MSQ', numerical: 'NAT', paragraph: 'Comprehension', matrix: 'Matrix' };
+
+function stripWatermarks(text){
+  if(!text) return '';
+  return String(text)
+    .replace(/(?:FIITJEE\s*Ltd\.?|FIITJEE\s*House)[^\n<]*/gi, '')
+    .replace(/website:\s*www\.fiitjee\.com[^\n<]*/gi, '')
+    .replace(/For More Join:\s*@\S+/gi, '')
+    .replace(/@FIITJEE\S*/gi, '')
+    .replace(/Kalu\s*Sarai[^\n<]*/gi, '')
+    .replace(/Sarvapriya\s*Vihar[^\n<]*/gi, '')
+    .replace(/\b\d{4}\s*FIITJEE\s*Students[^\n<]*/gi, '')
+    .trim();
+}
+
+function cleanSourceTag(q){
+  if(!q) return '';
+  if(q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_'))){
+    const sec = q.hcv_section || 'Selected';
+    const num = q.hcv_qnum ? (' • Q' + q.hcv_qnum) : '';
+    return 'HC Verma • ' + sec + num;
+  }
+  if(q.paper === 'qrp' || (q.id && String(q.id).startsWith('qrp_'))){
+    const qrpNum = q.qrpNumber ? ('0' + q.qrpNumber).slice(-2) : (String(q.id).match(/qrp_(\d+)/i) ? ('0' + String(q.id).match(/qrp_(\d+)/i)[1]).slice(-2) : '');
+    return 'Quizrr QRP' + (qrpNum ? (' • QRP ' + qrpNum) : '');
+  }
+  if(q.paper === 'mschouhan' || (q.id && String(q.id).startsWith('mschouhan_'))){
+    if(q.star === 'two_star') return 'MS Chouhan • Selected (★★)';
+    if(q.star === 'one_star') return 'MS Chouhan • Selected (★)';
+    if(q.star === 'normal') return 'MS Chouhan • Selected (Normal)';
+    return 'MS Chouhan • ' + (q.exercise || 'Level 1');
+  }
+  if(q.paper === 'neeraj' || (q.id && String(q.id).startsWith('nk_'))){
+    const isAdv = (q.subSource === 'jee_advanced' || (q.exam && /adv/i.test(q.exam)) || String(q.id).includes('_jee_adv') || q.level === 'Level 2' || q.exercise === 'Exercise II');
+    const ex = isAdv ? 'Advanced' : 'Mains';
+    const sec = q.section ? (' • ' + q.section) : '';
+    return 'Neeraj Kumar • ' + ex + sec;
+  }
+  if(q.paper === 'allen_jee' || (q.id && String(q.id).startsWith('allenjee_'))){
+    const b = q.bank || q.exercise || (String(q.id).includes('_o2_') ? 'O-2' : 'O-1');
+    return 'Allen JEE • ' + b;
+  }
+  if(q.paper === 'allen' || (q.id && String(q.id).startsWith('allenchem_'))){
+    return 'Allen NEET';
+  }
+  let yr = q.year || '';
+  let s = q.source || q.paperTitle || '';
+  s = s.replace(/^q_/i, '').replace(/^QM__/i, '').replace(/FIITJEE\s*AITS\s*/i, '');
+  let m = s.match(/(?:FT|CRT|PT|OT)[-_ ]*(?:[IVX\d]+)/i);
+  let ptype = m ? m[0].toUpperCase() : (q.paper === 'adv' ? 'JEE Adv' : (q.paper === 'main' ? 'JEE Main' : 'AITS'));
+  let qn = q.questionNumber ? 'Q' + q.questionNumber : (q.id ? String(q.id).split('_').pop() : '');
+  if(!qn || isNaN(+qn.replace(/\D/g, ''))) qn = '';
+  else qn = 'Q' + parseInt(qn.replace(/\D/g, ''), 10);
+  if(yr && qn) return yr + ' | ' + qn;
+  if(yr && ptype) return yr + ' | ' + ptype;
+  return (yr ? yr + ' | ' : '') + (q.chapter ? q.chapter.slice(0, 18) : 'AITS');
+}
+
 function sortQuestionsByPattern(list){
   if(!list || !list.length) return [];
   function isNeet(q){
@@ -464,13 +524,16 @@ function evaluate(q,s,m){
   return ok ? {r:'ok',marks:(m.numerical||m.single).c} : {r:'bad',marks:(m.numerical||m.single).w};
 }
 
+let _cachedSessionAttemptedSet = null;
 function getSessionAttemptedSet(){
+  if(_cachedSessionAttemptedSet) return _cachedSessionAttemptedSet;
   try {
     const raw = sessionStorage.getItem(PRK_SESSION_ATT_KEY);
-    return new Set(raw ? JSON.parse(raw) : []);
+    _cachedSessionAttemptedSet = new Set(raw ? JSON.parse(raw) : []);
   } catch(e){
-    return new Set();
+    _cachedSessionAttemptedSet = new Set();
   }
+  return _cachedSessionAttemptedSet;
 }
 
 function getSessionAttemptedCount(){
@@ -491,6 +554,7 @@ function markSessionAttempted(qId){
 }
 
 function resetSessionAttempted(){
+  _cachedSessionAttemptedSet = new Set();
   try {
     sessionStorage.removeItem(PRK_SESSION_ATT_KEY);
   } catch(e){}
@@ -506,13 +570,25 @@ function updateSessionAttemptedCounters(){
 }
 setTimeout(updateSessionAttemptedCounters, 0);
 
+let _cachedPrkAnswers = null;
 function getPrkAnswers(){
-  try { return JSON.parse(store.get(PRK_ANS_KEY) || '{}'); } catch(e){ return {}; }
+  if(_cachedPrkAnswers) return _cachedPrkAnswers;
+  try {
+    _cachedPrkAnswers = JSON.parse(store.get(PRK_ANS_KEY) || '{}');
+  } catch(e){
+    _cachedPrkAnswers = {};
+  }
+  return _cachedPrkAnswers;
+}
+function invalidatePrkAnswersCache(){
+  _cachedPrkAnswers = null;
 }
 function savePrkAnswer(qId, val, status){
   const map = getPrkAnswers();
   map[qId] = { val, status, t: Date.now() };
-  store.set(PRK_ANS_KEY, JSON.stringify(map));
+  try {
+    store.set(PRK_ANS_KEY, JSON.stringify(map));
+  } catch(e){}
   markAttempted({ id: qId });
   if(status === 'ok' || status === 'bad'){
     markSessionAttempted(qId);
@@ -719,9 +795,18 @@ function renderPracticeSidebar(){
     if(priorityQs.length > 0 || Object.keys(byChPriority).length > 0){
       const keys = Object.keys(byChPriority).sort((a,b) => (TAXONOMY_CHAPTER_ORDER[a] || 99) - (TAXONOMY_CHAPTER_ORDER[b] || 99) || a.localeCompare(b));
       const isAllPriority = !prkState.chap && prkState.sourceGroup === 'priority';
-      const prioAtt = priorityQs.filter(q => ansMap[q.id] && ansMap[q.id].status !== 'skip').length;
+      const prioAtt = priorityQs.reduce((acc, q) => acc + (ansMap[q.id] && ansMap[q.id].status !== 'skip' ? 1 : 0), 0);
       const prioPct = priorityQs.length ? Math.min(100, Math.round(prioAtt / priorityQs.length * 100)) : 0;
       const prioProg = prioAtt > 0 ? '<div class="marks-sb-progress-wrap"><div class="marks-sb-progress-bar" style="width:' + prioPct + '%"></div></div>' : '';
+
+      // Pre-aggregate attempted counts per chapter
+      const prioAttByCh = {};
+      priorityQs.forEach(q => {
+        if(ansMap[q.id] && ansMap[q.id].status !== 'skip'){
+          const qCh = (window.PRIORITY_MAP && window.PRIORITY_MAP[q.id] && window.PRIORITY_MAP[q.id].chapter) || q.chapter;
+          if(qCh) prioAttByCh[qCh] = (prioAttByCh[qCh] || 0) + 1;
+        }
+      });
 
       chHtml += '<details class="marks-sb-group" id="prkGroupPriority"' + (priorityOpen ? ' open' : '') + '>' +
         '<summary class="marks-sb-group-hdr" style="background:rgba(37,99,235,0.08);border-left:3.5px solid var(--brand)">' +
@@ -741,15 +826,13 @@ function renderPracticeSidebar(){
           '</button>' +
           keys.map(c => {
             const isAct = prkState.chap === c && prkState.sourceGroup === 'priority';
-            const cQs = priorityQs.filter(q => {
-              const qCh = (window.PRIORITY_MAP && window.PRIORITY_MAP[q.id] && window.PRIORITY_MAP[q.id].chapter) || q.chapter;
-              return qCh === c;
-            });
-            const cProg = getProgressHtml(cQs);
+            const totalC = byChPriority[c] || 0;
+            const attC = prioAttByCh[c] || 0;
+            const cProg = (attC > 0 && totalC > 0) ? '<div class="marks-sb-progress-wrap"><div class="marks-sb-progress-bar" style="width:' + Math.min(100, Math.round(attC / totalC * 100)) + '%"></div></div>' : '';
             return '<button type="button" class="marks-sb-item marks-sb-subitem' + (isAct ? ' active' : '') + '" data-prkchap="' + esc(c) + '" data-prksource="priority">' +
               '<div class="marks-sb-item-row">' +
                 '<span class="marks-sb-item-name">' + esc(c) + '</span>' +
-                '<span class="marks-sb-count">' + byChPriority[c] + '</span>' +
+                '<span class="marks-sb-count">' + totalC + '</span>' +
               '</div>' +
               cProg +
             '</button>';
@@ -782,18 +865,26 @@ function renderPracticeSidebar(){
             '</div>' +
             hcvProg +
           '</button>' +
-          keys.map(c => {
-            const isAct = prkState.chap === c && prkState.sourceGroup === 'hcv';
-            const cQs = hcvQs.filter(q => q.chapter === c);
-            const cProg = getProgressHtml(cQs);
-            return '<button type="button" class="marks-sb-item marks-sb-subitem' + (isAct ? ' active' : '') + '" data-prkchap="' + esc(c) + '" data-prksource="hcv">' +
-              '<div class="marks-sb-item-row">' +
-                '<span class="marks-sb-item-name">' + esc(c) + '</span>' +
-                '<span class="marks-sb-count">' + byChHcv[c] + '</span>' +
-              '</div>' +
-              cProg +
-            '</button>';
-          }).join('') +
+          // Pre-aggregate HCV attempted counts
+          (() => {
+            const hcvAttByCh = {};
+            hcvQs.forEach(q => {
+              if(ansMap[q.id] && ansMap[q.id].status !== 'skip' && q.chapter) hcvAttByCh[q.chapter] = (hcvAttByCh[q.chapter] || 0) + 1;
+            });
+            return keys.map(c => {
+              const isAct = prkState.chap === c && prkState.sourceGroup === 'hcv';
+              const totalC = byChHcv[c] || 0;
+              const attC = hcvAttByCh[c] || 0;
+              const cProg = (attC > 0 && totalC > 0) ? '<div class="marks-sb-progress-wrap"><div class="marks-sb-progress-bar" style="width:' + Math.min(100, Math.round(attC / totalC * 100)) + '%"></div></div>' : '';
+              return '<button type="button" class="marks-sb-item marks-sb-subitem' + (isAct ? ' active' : '') + '" data-prkchap="' + esc(c) + '" data-prksource="hcv">' +
+                '<div class="marks-sb-item-row">' +
+                  '<span class="marks-sb-item-name">' + esc(c) + '</span>' +
+                  '<span class="marks-sb-count">' + totalC + '</span>' +
+                '</div>' +
+                cProg +
+              '</button>';
+            }).join('');
+          })() +
         '</div>' +
       '</details>';
     }
@@ -822,18 +913,25 @@ function renderPracticeSidebar(){
             '</div>' +
             fjProg +
           '</button>' +
-          keys.map(c => {
-            const isAct = prkState.chap === c && prkState.sourceGroup === 'fiitjee';
-            const cQs = fiitjeeQs.filter(q => q.chapter === c);
-            const cProg = getProgressHtml(cQs);
-            return '<button type="button" class="marks-sb-item marks-sb-subitem' + (isAct ? ' active' : '') + '" data-prkchap="' + esc(c) + '" data-prksource="fiitjee">' +
-              '<div class="marks-sb-item-row">' +
-                '<span class="marks-sb-item-name">' + esc(c) + '</span>' +
-                '<span class="marks-sb-count">' + byChFiitjee[c] + '</span>' +
-              '</div>' +
-              cProg +
-            '</button>';
-          }).join('') +
+          (() => {
+            const fjAttByCh = {};
+            fiitjeeQs.forEach(q => {
+              if(ansMap[q.id] && ansMap[q.id].status !== 'skip' && q.chapter) fjAttByCh[q.chapter] = (fjAttByCh[q.chapter] || 0) + 1;
+            });
+            return keys.map(c => {
+              const isAct = prkState.chap === c && prkState.sourceGroup === 'fiitjee';
+              const totalC = byChFiitjee[c] || 0;
+              const attC = fjAttByCh[c] || 0;
+              const cProg = (attC > 0 && totalC > 0) ? '<div class="marks-sb-progress-wrap"><div class="marks-sb-progress-bar" style="width:' + Math.min(100, Math.round(attC / totalC * 100)) + '%"></div></div>' : '';
+              return '<button type="button" class="marks-sb-item marks-sb-subitem' + (isAct ? ' active' : '') + '" data-prkchap="' + esc(c) + '" data-prksource="fiitjee">' +
+                '<div class="marks-sb-item-row">' +
+                  '<span class="marks-sb-item-name">' + esc(c) + '</span>' +
+                  '<span class="marks-sb-count">' + totalC + '</span>' +
+                '</div>' +
+                cProg +
+              '</button>';
+            }).join('');
+          })() +
         '</div>' +
       '</details>';
     }
@@ -1129,71 +1227,43 @@ function renderPracticeMain(){
 
   const qs = getFilteredPracticeQuestions();
   prkFilteredList = qs;
-  const totalInScope = DB.filter(q => {
-    if(q.paper === 'allen') return false;
-    if(q.subject !== prkState.subj) return false;
-    if(prkState.sourceGroup === 'priority'){
-      const pInfo = window.PRIORITY_MAP && window.PRIORITY_MAP[q.id];
-      if(!pInfo) return false;
-      const qChap = pInfo.chapter || q.chapter;
-      if(prkState.chap && qChap !== prkState.chap && q.chapter !== prkState.chap) return false;
-    } else if(prkState.sourceGroup === 'fiitjee'){
-      if(window.PRIORITY_MAP && window.PRIORITY_MAP[q.id]) return false;
-      if(q.paper === 'qrp' || (q.id && String(q.id).startsWith('qrp_'))) return false;
-      if(q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_'))) return false;
-      if(q.paper === 'neeraj' || (q.id && String(q.id).startsWith('nk_'))) return false;
-      if(q.paper === 'mschouhan' || (q.id && String(q.id).startsWith('mschouhan_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    } else if(prkState.sourceGroup === 'hcv'){
-      if(q.paper !== 'hcv' && !(q.id && String(q.id).startsWith('HCV_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    } else if(prkState.sourceGroup === 'qrp'){
-      if(q.paper !== 'qrp' && !(q.id && String(q.id).startsWith('qrp_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    } else if(prkState.sourceGroup === 'neeraj'){
-      if(q.paper !== 'neeraj' && !(q.id && String(q.id).startsWith('nk_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    } else if(prkState.sourceGroup === 'mschouhan'){
-      if(q.paper !== 'mschouhan' && !(q.id && String(q.id).startsWith('mschouhan_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    } else {
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    }
-    return true;
-  }).length;
   const ansMap = getPrkAnswers();
-  const attInScope = DB.filter(q => {
-    if(q.paper === 'allen') return false;
-    if(q.subject !== prkState.subj) return false;
+  let totalInScope = 0;
+  let attInScope = 0;
+  for(let i = 0; i < DB.length; i++){
+    const q = DB[i];
+    if(q.paper === 'allen') continue;
+    if(q.subject !== prkState.subj) continue;
     if(prkState.sourceGroup === 'priority'){
       const pInfo = window.PRIORITY_MAP && window.PRIORITY_MAP[q.id];
-      if(!pInfo) return false;
+      if(!pInfo) continue;
       const qChap = pInfo.chapter || q.chapter;
-      if(prkState.chap && qChap !== prkState.chap && q.chapter !== prkState.chap) return false;
+      if(prkState.chap && qChap !== prkState.chap && q.chapter !== prkState.chap) continue;
     } else if(prkState.sourceGroup === 'fiitjee'){
-      if(window.PRIORITY_MAP && window.PRIORITY_MAP[q.id]) return false;
-      if(q.paper === 'qrp' || (q.id && String(q.id).startsWith('qrp_'))) return false;
-      if(q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_'))) return false;
-      if(q.paper === 'neeraj' || (q.id && String(q.id).startsWith('nk_'))) return false;
-      if(q.paper === 'mschouhan' || (q.id && String(q.id).startsWith('mschouhan_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
+      if(window.PRIORITY_MAP && window.PRIORITY_MAP[q.id]) continue;
+      if(q.paper === 'qrp' || (q.id && String(q.id).startsWith('qrp_'))) continue;
+      if(q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_'))) continue;
+      if(q.paper === 'neeraj' || (q.id && String(q.id).startsWith('nk_'))) continue;
+      if(q.paper === 'mschouhan' || (q.id && String(q.id).startsWith('mschouhan_'))) continue;
+      if(prkState.chap && q.chapter !== prkState.chap) continue;
     } else if(prkState.sourceGroup === 'hcv'){
-      if(q.paper !== 'hcv' && !(q.id && String(q.id).startsWith('HCV_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
+      if(q.paper !== 'hcv' && !(q.id && String(q.id).startsWith('HCV_'))) continue;
+      if(prkState.chap && q.chapter !== prkState.chap) continue;
     } else if(prkState.sourceGroup === 'qrp'){
-      if(q.paper !== 'qrp' && !(q.id && String(q.id).startsWith('qrp_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
+      if(q.paper !== 'qrp' && !(q.id && String(q.id).startsWith('qrp_'))) continue;
+      if(prkState.chap && q.chapter !== prkState.chap) continue;
     } else if(prkState.sourceGroup === 'neeraj'){
-      if(q.paper !== 'neeraj' && !(q.id && String(q.id).startsWith('nk_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
+      if(q.paper !== 'neeraj' && !(q.id && String(q.id).startsWith('nk_'))) continue;
+      if(prkState.chap && q.chapter !== prkState.chap) continue;
     } else if(prkState.sourceGroup === 'mschouhan'){
-      if(q.paper !== 'mschouhan' && !(q.id && String(q.id).startsWith('mschouhan_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
+      if(q.paper !== 'mschouhan' && !(q.id && String(q.id).startsWith('mschouhan_'))) continue;
+      if(prkState.chap && q.chapter !== prkState.chap) continue;
     } else {
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
+      if(prkState.chap && q.chapter !== prkState.chap) continue;
     }
-    return Boolean(ansMap[q.id] && ansMap[q.id].status !== 'skip');
-  }).length;
+    totalInScope++;
+    if(ansMap[q.id] && ansMap[q.id].status !== 'skip') attInScope++;
+  }
 
   const statsEl = $('#prkHeroStats');
   if(statsEl) statsEl.textContent = 'Showing ' + Math.min(prkVisibleLimit, qs.length) + ' of ' + qs.length + ' Qs (' + totalInScope + ' total)';
@@ -1216,7 +1286,7 @@ function renderPracticeMain(){
   // Render clean, minimalist question preview rows (Marks style list) with lazy pagination
   const slice = qs.slice(0, prkVisibleLimit);
   let html = slice.map((q, idx) => {
-    return renderPracticeRowHtml(q, idx);
+    return renderPracticeRowHtml(q, idx, ansMap);
   }).join('');
 
   if(prkVisibleLimit < qs.length){
@@ -1237,8 +1307,8 @@ function renderPracticeMain(){
   }
 }
 
-function renderPracticeRowHtml(q, idx){
-  const ansMap = getPrkAnswers();
+function renderPracticeRowHtml(q, idx, passedAnsMap){
+  const ansMap = passedAnsMap || getPrkAnswers();
   const savedAns = ansMap[q.id];
   const isAttempted = Boolean(savedAns && savedAns.status !== 'skip');
   const isCorrect = savedAns && savedAns.status === 'ok';
@@ -1354,7 +1424,12 @@ function renderPracticeDetailView(){
 
   if(!q.options && !q.images && q.subject){
     ensureSubjectLoaded(q.subject).then(() => {
-      renderPracticeDetailView();
+      // Re-fetch question from DB to get newly loaded options/images
+      const updated = findQuestionById(q.id);
+      if(updated){
+        prkFilteredList[prkCurrentDetailIdx] = updated;
+        renderPracticeDetailView();
+      }
     });
   }
 
@@ -1445,7 +1520,7 @@ function prevDetailQuestion(){
   if(prkCurrentDetailIdx > 0){
     prkCurrentDetailIdx--;
     renderPracticeDetailView();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
   }
 }
 
@@ -1453,7 +1528,7 @@ function nextDetailQuestion(){
   if(prkCurrentDetailIdx < prkFilteredList.length - 1){
     prkCurrentDetailIdx++;
     renderPracticeDetailView();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
   }
 }
 
@@ -1656,7 +1731,8 @@ function handlePrkBottomCheck(){
 function handlePrkRetry(qId){
   const map = getPrkAnswers();
   delete map[qId];
-  store.set(PRK_ANS_KEY, JSON.stringify(map));
+  invalidatePrkAnswersCache();
+  try { store.set(PRK_ANS_KEY, JSON.stringify(map)); } catch(e){}
   if(ATT.has(qId)){
     ATT.delete(qId);
     saveAtt();

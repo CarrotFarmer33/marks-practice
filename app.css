@@ -1,3 +1,48 @@
+
+/* ==================== 60FPS HARDWARE ACCELERATION & SMOOTH SCROLLING ==================== */
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeSpeed;
+}
+
+body {
+  overscroll-behavior-y: none;
+}
+
+.marks-sidebar {
+  -webkit-overflow-scrolling: touch;
+  will-change: scroll-position;
+  contain: layout style;
+}
+
+#prkChapList {
+  -webkit-overflow-scrolling: touch;
+  will-change: scroll-position;
+  contain: content;
+}
+
+.marks-q-row {
+  contain: content;
+  content-visibility: auto;
+  contain-intrinsic-size: 76px;
+  will-change: background-color;
+  transform: translateZ(0);
+}
+
+.marks-opt-chip {
+  transform: translateZ(0);
+}
+
+.marks-q-body img,
+.marks-q-body .qimg,
+.marks-q-body .practice-svg {
+  image-rendering: auto;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
 /* Antigravity Marks Practice Stylesheet */
 :root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
 /* ==================== TEST BUILDER & BUILD SHEET STYLES ==================== */
