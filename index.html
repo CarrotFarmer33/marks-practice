@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5.0,user-scalable=yes,viewport-fit=cover">
+  <title>Practice Portal (Marks Format)</title>
+  <link rel="stylesheet" href="app.css">
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      svg: { fontCache: 'global' },
+      startup: { typeset: false }
+    };
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js" async></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="config.js"></script>
+  <script src="priority_bank.js"></script>
+  <script src="core_loader.js"></script>
+</head>
+<body>
+
+<div id="scrPracticeList" class="screen" hidden>
+  <div class="topbar"><div class="tb-in"><span class="tb-title" id="prkTopbarTitle">Practice &ndash; Questions</span><div style="display:flex;align-items:center;gap:8px"><div class="marks-detail-session-pill" id="prkListSessionPill" title="Questions attempted this session (click to reset)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Session: <b id="prkListSessionCount">0</b> attempted</span></div><button class="btn sm" id="prkResetAttemptBtn" type="button" style="font-size:12px">Reset Attempts</button><button class="btn sm" id="clearAppCache" type="button" style="color:var(--muted)">⚡ Clear Cache</button></div></div></div>
+
+  <!-- Mobile sidebar overlay -->
+  <div class="prk-sidebar-overlay" id="prkSidebarOverlay"></div>
+
+  <main class="wrap marks-layout">
+    <aside class="marks-sidebar" id="prkSidebar">
+      <!-- Subject selector: compact pill tabs -->
+      <div class="marks-sb-card">
+        <div class="marks-sb-head">Subject</div>
+        <div id="prkSubjList" class="prk-subj-tabs"></div>
+      </div>
+      <!-- Chapter search + list -->
+      <div class="marks-sb-card" style="flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden">
+        <div class="marks-sb-head" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Chapters</span>
+          <span id="prkChapCount" style="font-size:11px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--muted)"></span>
+        </div>
+        <div class="prk-sb-search-wrap">
+          <input type="search" class="prk-sb-search" id="prkChapSearch" placeholder="Search chapters…" autocomplete="off" spellcheck="false">
+        </div>
+        <div id="prkChapList" style="overflow-y:auto;max-height:calc(100vh - 260px)"></div>
+      </div>
+    </aside>
+
+    <section class="marks-main-card">
+      <!-- Mobile sidebar toggle -->
+      <button type="button" class="prk-sb-toggle" id="prkSidebarToggle" aria-label="Open chapter navigator">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <span id="prkSbToggleLabel">Chapters &amp; Filters</span>
+      </button>
+
+      <!-- Active chapter breadcrumb -->
+      <div class="prk-breadcrumb-bar" id="prkBreadcrumbBar">
+        <span class="prk-bc-subj" id="prkBcSubj">Physics</span>
+        <span class="prk-bc-sep">&rsaquo;</span>
+        <span class="prk-bc-chap" id="prkBcChap">All Chapters</span>
+        <span class="prk-bc-count" id="prkBcCount"></span>
+      </div>
+
+      <!-- Source Bank Switcher Tabs -->
+      <div class="source-top-tabs" id="prkSourceTabs">
+        <button type="button" class="source-tab-btn" data-prksrcgroup="priority">
+          <span style="font-weight:700">Selected Bank</span>
+          <span class="pill-check" id="prkPriorityBadgeCount" style="background:var(--brand);color:#fff;border:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;width:auto;height:auto">1,216 Qs</span>
+        </button>
+        <button type="button" class="source-tab-btn" data-prksrcgroup="all">
+          <span>All Questions</span>
+        </button>
+        <button type="button" class="source-tab-btn" data-prksrcgroup="fiitjee">
+          <span>FIITJEE (AITS)</span>
+        </button>
+        <button type="button" class="source-tab-btn" data-prksrcgroup="hcv">
+          <span style="font-weight:700">HC Verma</span>
+          <span class="pill-check" id="prkHcvBadgeCount" style="background:var(--brand);color:#fff;border:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;width:auto;height:auto">360 Qs</span>
+        </button>
+        <button type="button" class="source-tab-btn" data-prksrcgroup="qrp">
+          <span>Quizrr QRP</span>
+          <span class="pill-check" id="prkQrpBadgeCount" style="background:var(--brand);color:#fff;border:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;width:auto;height:auto;display:none"></span>
+        </button>
+        <button type="button" class="source-tab-btn" data-prksrcgroup="mschouhan" style="display:none">
+          <span style="font-weight:700">M.S. Chouhan</span>
+          <span class="pill-check" id="prkMsBadgeCount" style="background:var(--brand);color:#fff;border:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;width:auto;height:auto;display:none"></span>
+        </button>
+        <button type="button" class="source-tab-btn" data-prksrcgroup="neeraj" style="display:none">
+          <span style="font-weight:700">Neeraj Kumar</span>
+          <span class="pill-check" id="prkNkBadgeCount" style="background:var(--brand);color:#fff;border:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;width:auto;height:auto;display:none"></span>
+        </button>
+      </div>
+
+      <!-- Marks Action Buttons -->
+      <div style="display:flex;gap:10px;margin-bottom:4px;flex-wrap:wrap">
+        <button class="marks-hero-action-btn" id="prkPracticeFirstBtn" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>Practice Now</span>
+        </button>
+        
+      </div>
+
+      <!-- Filters Row (Image 1) -->
+      <div class="marks-filter-bar">
+        <button type="button" class="marks-pill-btn" id="prkToggleHideAttempted" data-hide="0">
+          <span>Hide Attempted</span>
+          <span id="prkHideDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--line)"></span>
+        </button>
+
+        <select id="prkFilterPaper" class="marks-pill-select" aria-label="Paper">
+          <option value="all">All Papers</option>
+          <option value="priority">Selected Bank</option>
+          <option value="main">JEE Main</option>
+          <option value="adv">JEE Advanced</option>
+          <option value="hcv">HC Verma (Selected)</option>
+          <option value="qrp">Quizrr QRP (2027)</option>
+        </select>
+
+        <select id="prkFilterYear" class="marks-pill-select" aria-label="Year">
+          <option value="all">Years: All</option>
+        </select>
+
+        <select id="prkFilterStatus" class="marks-pill-select" aria-label="Attempt Status">
+          <option value="all">Status: All</option>
+          <option value="unattempted">Unattempted</option>
+          <option value="attempted">Attempted</option>
+          <option value="correct">Correct</option>
+          <option value="wrong">Wrong</option>
+        </select>
+
+        <select id="prkFilterType" class="marks-pill-select" aria-label="Question Type">
+          <option value="all">All Types</option>
+          <option value="single">Single Choice (MCQ)</option>
+          <option value="multi">Multiple Correct (MSQ)</option>
+          <option value="numerical">Numerical (NAT)</option>
+          <option value="paragraph">Comprehension</option>
+        </select>
+
+        <button type="button" class="marks-pill-btn" id="prkResetFiltersBtn" style="margin-left:auto">Clear Filters</button>
+      </div>
+
+      <!-- Subfilters / Tags Row (Image 1) -->
+      <div class="marks-subfilters-row" id="prkSubFiltersRow">
+        <button type="button" class="marks-subfilter-chip active" data-prksubtag="all">All Questions</button>
+        <button type="button" class="marks-subfilter-chip" data-prksubtag="single">Single Choice</button>
+        <button type="button" class="marks-subfilter-chip" data-prksubtag="multi">Multiple Correct</button>
+        <button type="button" class="marks-subfilter-chip" data-prksubtag="numerical">Numerical</button>
+        <button type="button" class="marks-subfilter-chip" data-prksubtag="paragraph">Comprehension</button>
+      </div>
+
+      <!-- Summary / Count Row (Image 1) -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 4px 12px;font-size:13px;color:var(--muted);border-bottom:1px solid var(--line);flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span id="prkHeroStats" style="font-weight:600">Showing all Qs (0/0)</span>
+          <span class="marks-detail-session-pill" id="prkHeroSessionStat" style="padding:2px 10px;font-size:12px" title="Questions attempted this session (click to reset)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <span>Session: <b id="prkHeroSessionCount">0</b> attempted</span>
+          </span>
+        </div>
+        <span id="prkSortBtn" style="cursor:pointer;font-weight:500;user-select:none">&uarr;&darr; Year-wise (New to Old)</span>
+      </div>
+
+      <div id="prkQuestionsContainer" class="marks-q-list"></div>
+    </section>
+  </main>
+</div>
+
+<div id="scrPracticeDetail" class="screen" hidden>
+  <div class="topbar">
+    <div class="tb-in">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0">
+        <button class="btn sm" id="prkDetailListBtn" type="button" title="Back to questions list" style="padding:4px 10px;font-size:15px">&larr;</button>
+        <span class="tb-title" id="prkDetailBreadcrumb" style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Practice Question View</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="marks-detail-session-pill" id="prkTopSessionPill" title="Questions attempted this session (click to reset)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          <span>Session: <b id="prkTopSessionCount">0</b> attempted</span>
+        </div>
+        <button class="btn sm" id="prkDetailBackToListBtn" type="button">&larr; Back to List</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap marks-detail-wrap">
+    <!-- Marks Question Meta Header (Image 2) -->
+    <div class="marks-detail-header">
+      <div class="marks-detail-header-left">
+        <div class="marks-detail-qnum" id="prkDetailQNum">Q 1</div>
+        <div class="marks-detail-qmeta" id="prkDetailQMeta"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="marks-detail-session-pill" id="prkDetailSessionPill" title="Questions attempted this session (click to reset)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          <span>Session: <b id="prkSessionAttemptedCount">0</b> attempted</span>
+        </div>
+        <div class="marks-detail-timer-pill" id="prkDetailTimer" title="Time on this question">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <span id="prkTimerText">00:00</span>
+        </div>
+      </div>
+      <div class="marks-detail-header-right">
+        <button class="bmb" id="prkDetailBmBtn" type="button" title="Bookmark this question" style="padding:6px"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l1.9 4.2 4.6.5-3.4 3.1 1 4.5L8 11.5 3.9 13.8l1-4.5L1.5 6.2l4.6-.5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
+        <button class="btn sm" id="prkDetailRptBtn" type="button" style="font-size:12px;padding:3px 8px">Report</button>
+      </div>
+    </div>
+
+    <!-- Question Content & Options Body -->
+    <div id="prkDetailCardContainer" class="marks-detail-card-body"></div>
+  </main>
+
+  <!-- Marks Floating Bottom Action Bar (Image 2) -->
+  <div class="marks-bottom-bar">
+    <div class="marks-bottom-bar-in">
+      <button class="marks-nav-btn" id="prkPrevQBtn" type="button">Previous</button>
+      <button class="marks-check-btn" id="prkBottomCheckBtn" type="button">Check Answer</button>
+      <button class="marks-nav-btn" id="prkNextQBtn" type="button">Next</button>
+    </div>
+  </div>
+</div>
+
+
+
+
+<div class="scrim" id="scrim"></div>
+<div id="modal" class="modal" hidden><div class="box" id="modalBox"></div></div>
+
+
+  <script src="app.js"></script>
+</body>
+</html>
