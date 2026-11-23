@@ -2453,22 +2453,62 @@ mjx-container *{color:#ffffff !important;fill:#ffffff !important}
   color: #fff;
 }
 .marks-opt-chip.correct {
-  border-color: var(--good, #15803d) !important;
-  background: rgba(21, 128, 61, 0.1) !important;
+  border-color: #16a34a !important;
+  background: rgba(22, 163, 74, 0.16) !important;
 }
 .marks-opt-chip.correct .marks-opt-circle {
-  background: var(--good, #15803d) !important;
-  border-color: var(--good, #15803d) !important;
+  background: #16a34a !important;
+  border-color: #16a34a !important;
   color: #fff !important;
 }
 .marks-opt-chip.wrong {
-  border-color: var(--bad, #b91c1c) !important;
-  background: rgba(185, 28, 28, 0.1) !important;
+  border-color: #dc2626 !important;
+  background: rgba(220, 38, 38, 0.16) !important;
 }
 .marks-opt-chip.wrong .marks-opt-circle {
-  background: var(--bad, #b91c1c) !important;
-  border-color: var(--bad, #b91c1c) !important;
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
   color: #fff !important;
+}
+.marks-eval-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.marks-eval-banner.correct {
+  background: rgba(22, 163, 74, 0.15);
+  border: 1.5px solid #16a34a;
+  color: #16a34a;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .marks-eval-banner.correct {
+    color: #4ade80;
+    border-color: #22c55e;
+  }
+}
+:root[data-theme="dark"] .marks-eval-banner.correct {
+  color: #4ade80;
+  border-color: #22c55e;
+}
+.marks-eval-banner.wrong {
+  background: rgba(220, 38, 38, 0.15);
+  border: 1.5px solid #dc2626;
+  color: #dc2626;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .marks-eval-banner.wrong {
+    color: #f87171;
+    border-color: #ef4444;
+  }
+}
+:root[data-theme="dark"] .marks-eval-banner.wrong {
+  color: #f87171;
+  border-color: #ef4444;
 }
 .marks-opt-text {
   flex: 1;

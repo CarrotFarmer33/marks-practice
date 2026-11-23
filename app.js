@@ -13,11 +13,35 @@ const QTS = { single: 'MCQ', multi: 'MSQ', numerical: 'NAT', paragraph: 'Compreh
 const STAR = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l1.9 4.2 4.6.5-3.4 3.1 1 4.5L8 11.5 3.9 13.8l1-4.5L1.5 6.2l4.6-.5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
 
 
+function getCorrectOptionIndices(q){
+  if(!q) return [];
+  let a = q.ans != null ? q.ans : (q.answer != null ? q.answer : q.key);
+  if(a == null) return [];
+  if(!Array.isArray(a)) a = [a];
+  const indices = [];
+  a.forEach(item => {
+    if(typeof item === 'number') {
+      indices.push(item);
+    } else if(typeof item === 'string') {
+      const s = item.trim().toUpperCase();
+      if(LET.includes(s)){
+        indices.push(LET.indexOf(s));
+      } else {
+        const parsed = parseInt(s, 10);
+        if(!isNaN(parsed) && parsed >= 0 && parsed <= 8){
+          indices.push(parsed >= 1 ? parsed - 1 : parsed);
+        }
+      }
+    }
+  });
+  return indices;
+}
+
 const fmtAns = (q, a) => {
   if(a == null || a === '') return '—';
   const t = q.rawType || q.type;
   if(t === 'numerical') return String(a);
-  if(Array.isArray(a)) return a.map(k => LET[k] || k).join(', ');
+  if(Array.isArray(a)) return a.map(k => (typeof k === 'number' ? (LET[k] || k) : k)).join(', ');
   if(typeof a === 'number') return LET[a] || String(a);
   return String(a);
 };
@@ -28,8 +52,8 @@ const keyText = q => {
   if(q.answer) return String(q.answer);
   const t = q.rawType || q.type;
   if(t === 'numerical') return q.range ? (q.range[0] + ' to ' + q.range[1]) : String(q.ans != null ? q.ans : '');
-  if(Array.isArray(q.ans)) return q.ans.map(k => LET[k] || k).join(', ');
-  if(typeof q.ans === 'number') return LET[q.ans] || String(q.ans);
+  const indices = getCorrectOptionIndices(q);
+  if(indices.length) return indices.map(k => LET[k] || k).join(', ');
   return String(q.ans != null ? q.ans : (q.answer || 'not available'));
 };
 
@@ -1601,6 +1625,7 @@ function renderPracticeCardHtml(q, idx){
   const isAttempted = Boolean(savedAns && savedAns.status !== 'skip');
   const isCorrect = savedAns && savedAns.status === 'ok';
   const isWrong = savedAns && savedAns.status === 'bad';
+  const isHcv = q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_'));
 
   const effType = q.paragraph ? (q.rawType || 'single') : (q.rawType || q.type || 'single');
 
@@ -1629,8 +1654,7 @@ function renderPracticeCardHtml(q, idx){
   }
 
   // Zoom Bar (Smooth in-card zooming)
-  const isHcvCard = q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_'));
-  const defZoomVal = isHcvCard ? 75 : 100;
+  const defZoomVal = isHcv ? 75 : 100;
   const zoomBarHtml = '<div class="marks-zoom-bar">' +
     '<button type="button" class="marks-zoom-btn" id="prkZoomOutBtn" title="Zoom Out">&minus;</button>' +
     '<span id="prkZoomLevelText" style="font-size:12px;font-family:monospace;font-weight:600">' + defZoomVal + '%</span>' +
@@ -1651,9 +1675,8 @@ function renderPracticeCardHtml(q, idx){
   } else {
     const isMulti = effType === 'multi';
     const chosenList = savedAns ? (Array.isArray(savedAns.val) ? savedAns.val : [savedAns.val]) : [];
-    const correctList = Array.isArray(q.ans) ? q.ans : (q.ans != null ? [q.ans] : []);
+    const correctList = getCorrectOptionIndices(q);
     const numOpts = (Array.isArray(q.options) && q.options.length) ? q.options.length : 4;
-    const isHcv = q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_'));
     const hasCustomOpts = isHcv && Array.isArray(q.options) && q.options.length > 0 && !q.labelOnly;
     const optLabels = Array.from({length: numOpts}, (_, i) => {
       if(hasCustomOpts && q.options[i] != null && String(q.options[i]).trim()){
@@ -1706,11 +1729,18 @@ function renderPracticeCardHtml(q, idx){
       '</div>';
     }
 
+    const evalBanner = isCorrect
+      ? '<div class="marks-eval-banner correct"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>Correct Answer! (+4 Marks)</span></div>'
+      : (isWrong
+        ? '<div class="marks-eval-banner wrong"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg><span>Incorrect Answer (-1 Mark)</span></div>'
+        : '');
+
     const solText = q.original_answer_mathjax || q.solution || q.original_answer || '';
     const hasSolText = Boolean(solText && solText.trim());
     const hasSolImgs = Boolean(q.solImages && q.solImages.length);
 
     solHtml = '<div class="marks-sol-box" style="margin-top:28px">' +
+      evalBanner +
       '<div style="margin-bottom:12px;font-size:14.5px">' +
         '<b>Correct Key:</b> <span style="font-weight:700;color:var(--good,#15803d);margin-right:12px">' + esc(keyText(q)) + '</span>' +
         (savedAns.status !== 'skip' ? ('&bull; <b style="margin-left:12px">Your Answer:</b> <span style="font-weight:700">' + esc(fmtAns(q, savedAns.val)) + '</span>') : '<span class="muted" style="margin-left:8px">(Solution viewed)</span>') +
@@ -1815,7 +1845,7 @@ function handlePrkBottomCheck(){
       alert('Please select an option before checking.');
       return;
     }
-    const correctList = Array.isArray(q.ans) ? q.ans : (q.ans != null ? [q.ans] : []);
+    const correctList = getCorrectOptionIndices(q);
     let isOk = false;
     if(isMulti){
       isOk = selected.length === correctList.length && selected.every(x => correctList.includes(x));
@@ -1856,8 +1886,44 @@ function handlePrkShowSol(qId){
   }
 }
 
+function openModal(html, cb){
+  const m = $('#modal'), b = $('#modalBox'), s = $('#scrim');
+  if(b) b.innerHTML = html;
+  if(m) m.hidden = false;
+  if(s) s.classList.add('show');
+  if(cb) cb();
+}
+function closeModal(){
+  const m = $('#modal'), s = $('#scrim');
+  if(m) m.hidden = true;
+  if(s) s.classList.remove('show');
+}
+
+// Keyboard Arrow Keys navigation for Detail View
+document.addEventListener('keydown', e => {
+  const activeEl = document.activeElement;
+  const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+  
+  const detailScr = document.getElementById('scrPracticeDetail');
+  const isDetailOpen = detailScr && !detailScr.hidden;
+
+  if(isDetailOpen && !isInput){
+    if(e.key === 'ArrowRight' || e.key === 'ArrowDown'){
+      e.preventDefault();
+      nextDetailQuestion();
+    } else if(e.key === 'ArrowLeft' || e.key === 'ArrowUp'){
+      e.preventDefault();
+      prevDetailQuestion();
+    }
+  }
+});
+
 // Global event delegation for Practice portal
 document.addEventListener('click', e => {
+  if(e.target && e.target.id === 'scrim'){
+    closeModal();
+    return;
+  }
   const previewImage = e.target.closest('img.qimg');
   if(previewImage){
     e.preventDefault();
