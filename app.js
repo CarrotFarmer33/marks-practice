@@ -1,5 +1,3 @@
-<script>
-(function(){
 "use strict";
 
 const $ = s => document.querySelector(s);
@@ -12,6 +10,34 @@ const TRANK = {single:0, assertion_reason:0, numerical:1, multi:2, multiple:2, p
 
 
 const QTS = { single: 'MCQ', multi: 'MSQ', numerical: 'NAT', paragraph: 'Comprehension', matrix: 'Matrix' };
+
+const fmtAns = (q, a) => {
+  if(a == null || a === '') return '—';
+  const t = q.rawType || q.type;
+  if(t === 'numerical') return String(a);
+  if(Array.isArray(a)) return a.map(k => LET[k] || k).join(', ');
+  if(typeof a === 'number') return LET[a] || String(a);
+  return String(a);
+};
+
+const keyText = q => {
+  if(!q) return 'not available';
+  if(q.correct_option) return String(q.correct_option);
+  if(q.answer) return String(q.answer);
+  const t = q.rawType || q.type;
+  if(t === 'numerical') return q.range ? (q.range[0] + ' to ' + q.range[1]) : String(q.ans != null ? q.ans : '');
+  if(Array.isArray(q.ans)) return q.ans.map(k => LET[k] || k).join(', ');
+  if(typeof q.ans === 'number') return LET[q.ans] || String(q.ans);
+  return String(q.ans != null ? q.ans : (q.answer || 'not available'));
+};
+
+function toggleBm(id){
+  if(!id) return;
+  if(BM.has(id)) BM.delete(id);
+  else BM.add(id);
+  saveSet('aits_bookmarks', BM);
+}
+
 
 function stripWatermarks(text){
   if(!text) return '';
@@ -1353,6 +1379,9 @@ function renderPracticeRowHtml(q, idx, passedAnsMap){
   if(tag) metaParts.push('<span>' + esc(tag) + '</span>');
   if(q.chapter) metaParts.push('<span>' + esc(q.chapter) + '</span>');
   metaParts.push('<span class="marks-q-badge" style="font-size:11px;padding:1px 6px">' + esc(typeLabel) + '</span>');
+  if(q.solution_timeline_url || q.solution_video_url){
+    metaParts.push('<span class="marks-q-badge" style="background:rgba(239,68,68,0.12);color:#dc2626;border-color:rgba(239,68,68,0.25);font-size:11px;padding:1px 6px;font-weight:600">▶ Video Sol</span>');
+  }
   if(statusBadge) metaParts.push(statusBadge);
 
   return '<div class="' + rowClasses + '" data-prkqid="' + esc(q.id) + '" data-idx="' + idx + '">' +
@@ -1450,7 +1479,8 @@ function renderPracticeDetailView(){
     if(isHcv){
       const sec = q.hcv_section || 'Selected';
       const num = q.hcv_qnum ? (' Q' + q.hcv_qnum) : '';
-      qMetaEl.innerHTML = '<span style="color:var(--brand);font-weight:700">HC Verma</span> &bull; <span>' + esc(sec + num) + '</span> &bull; <span>' + esc(q.chapter || '') + '</span>';
+      const vidTag = (q.solution_timeline_url || q.solution_video_url) ? ' &bull; <span style="background:rgba(239,68,68,0.12);color:#dc2626;padding:2px 8px;border-radius:12px;font-weight:600;font-size:12px">▶ Video Solution' + (q.solution_timestamp ? (' @ ' + esc(q.solution_timestamp)) : '') + '</span>' : '';
+      qMetaEl.innerHTML = '<span style="color:var(--brand);font-weight:700">HC Verma</span> &bull; <span>' + esc(sec + num) + '</span> &bull; <span>' + esc(q.chapter || '') + '</span>' + vidTag;
     } else if(isPri && window.PRIORITY_MAP[q.id]){
       const pInfo = window.PRIORITY_MAP[q.id];
       qMetaEl.innerHTML = '<span style="color:var(--brand);font-weight:700">Topic: ' + esc(pInfo.topic || '') + '</span> &bull; <span>JEE Main ' + esc(pInfo.year || q.year || 2025) + '</span> &bull; <span>' + esc(pInfo.chapter || q.chapter || '') + '</span>';
@@ -1488,6 +1518,14 @@ function renderPracticeDetailView(){
   // Bottom Check / Action button state
   const ansMap = getPrkAnswers();
   const savedAns = ansMap[q.id];
+  const solBtn = $('#prkBottomSolBtn');
+  if(solBtn){
+    if(savedAns){
+      solBtn.textContent = 'Hide Solution';
+    } else {
+      solBtn.textContent = (isHcv && (q.solution_timeline_url || q.solution_video_url)) ? '▶ Video Solution' : 'Show Solution';
+    }
+  }
   const checkBtn = $('#prkBottomCheckBtn');
   if(checkBtn){
     if(savedAns){
@@ -1614,11 +1652,45 @@ function renderPracticeCardHtml(q, idx){
   // Solution Box
   let solHtml = '';
   if(savedAns){
+    const hasVideo = Boolean(q.solution_timeline_url || q.solution_video_url);
+    const videoUrl = q.solution_timeline_url || q.solution_video_url;
+    
+    let videoSolCardHtml = '';
+    if(hasVideo){
+      videoSolCardHtml = '<div class="marks-hcv-video-banner">' +
+        '<div style="display:flex;align-items:center;gap:12px;min-width:220px">' +
+          '<div style="width:38px;height:38px;border-radius:50%;background:#ef4444;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(239,68,68,0.35)">' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-weight:700;font-size:14.5px;color:var(--fg)">HC Verma Video Solution</div>' +
+            '<div style="font-size:12.5px;color:var(--muted);margin-top:2px">' +
+              (q.solution_timestamp ? ('Timestamp: <strong style="color:var(--fg);font-family:monospace;font-size:13px">' + esc(q.solution_timestamp) + '</strong>') : 'Full Chapter Video') +
+              (q.hcv_section ? (' &bull; ' + esc(q.hcv_section)) : '') +
+              (q.hcv_qnum ? (' Q' + esc(q.hcv_qnum)) : '') +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<a href="' + esc(videoUrl) + '" target="_blank" rel="noopener noreferrer" class="marks-hcv-video-btn">' +
+          '<span>Watch on YouTube</span>' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>' +
+        '</a>' +
+      '</div>';
+    }
+
+    const solText = q.original_answer_mathjax || q.solution || q.original_answer || '';
+    const hasSolText = Boolean(solText && solText.trim());
+    const hasSolImgs = Boolean(q.solImages && q.solImages.length);
+
     solHtml = '<div class="marks-sol-box" style="margin-top:28px">' +
-      '<div style="margin-bottom:10px"><b>Key:</b> <span style="font-weight:700;color:var(--good,#15803d)">' + esc(keyText(q)) + '</span> &bull; <b>Your Answer:</b> <span style="font-weight:700">' + esc(fmtAns(q, savedAns.val)) + '</span></div>' +
-      ((q.solution || (q.solImages && q.solImages.length)) ?
-        '<div><b>Solution:</b><div style="margin-top:8px;font-size:15.5px;line-height:1.65;font-family:var(--font-q)">' + rich(q.solution || '') + (q.solImages || []).map(u => imageMarkup(u, 'Solution figure', 'practice-svg')).join('') + '</div></div>' :
-        '<div class="muted">No extended solution image was attached in archive.</div>') +
+      '<div style="margin-bottom:12px;font-size:14.5px">' +
+        '<b>Correct Key:</b> <span style="font-weight:700;color:var(--good,#15803d);margin-right:12px">' + esc(keyText(q)) + '</span>' +
+        (savedAns.status !== 'skip' ? ('&bull; <b style="margin-left:12px">Your Answer:</b> <span style="font-weight:700">' + esc(fmtAns(q, savedAns.val)) + '</span>') : '<span class="muted" style="margin-left:8px">(Solution viewed)</span>') +
+      '</div>' +
+      videoSolCardHtml +
+      ((hasSolText || hasSolImgs) ?
+        ('<div><b>' + (isHcv ? 'Book Answer / Solution:' : 'Solution:') + '</b><div style="margin-top:8px;font-size:15.5px;line-height:1.65;font-family:var(--font-q)">' + rich(solText) + (q.solImages || []).map(u => imageMarkup(u, 'Solution figure', 'practice-svg')).join('') + '</div></div>') :
+        (!hasVideo ? '<div class="muted">No extended solution image was attached in archive.</div>' : '')) +
     '</div>';
   }
 
@@ -1741,11 +1813,260 @@ function handlePrkRetry(qId){
 }
 
 function handlePrkShowSol(qId){
+  if(!qId && prkFilteredList.length){
+    const curr = prkFilteredList[prkCurrentDetailIdx];
+    if(curr) qId = curr.id;
+  }
   const q = findQuestionById(qId);
   if(!q) return;
-  savePrkAnswer(qId, null, 'skip');
-  renderPracticeDetailView();
+  const map = getPrkAnswers();
+  if(map[qId]){
+    handlePrkRetry(qId);
+  } else {
+    savePrkAnswer(qId, null, 'skip');
+    renderPracticeDetailView();
+  }
 }
+
+// Global event delegation for Practice portal
+document.addEventListener('click', e => {
+  const previewImage = e.target.closest('img.qimg');
+  if(previewImage){
+    e.preventDefault();
+    const src = previewImage.currentSrc || previewImage.src;
+    if(src && src !== 'data:,'){
+      const alt = previewImage.alt || 'Question figure';
+      openModal('<div class="image-preview-title"><span>' + esc(alt) + '</span><button type="button" class="btn" id="closeImagePreview">Close</button></div><div class="image-preview"><img src="' + esc(src) + '" alt="' + esc(alt) + '"></div>', () => {
+        const close = $('#closeImagePreview'); if(close) close.onclick = closeModal;
+      });
+    }
+    return;
+  }
+
+  // Row click in practice list
+  const qRow = e.target.closest('.marks-q-row[data-prkqid]');
+  if(qRow){
+    const bmBtn = e.target.closest('.bmb, button[data-bm]');
+    if(bmBtn){
+      const qId = bmBtn.dataset.bm || qRow.dataset.prkqid;
+      toggleBm(qId);
+      bmBtn.setAttribute('aria-pressed', String(BM.has(qId)));
+      return;
+    }
+    const qId = qRow.dataset.prkqid;
+    openPracticeDetail(qId);
+    return;
+  }
+
+  // Option chip click
+  const optChip = e.target.closest('.marks-opt-chip[data-prkopt]');
+  if(optChip){
+    const qId = optChip.dataset.prkopt;
+    const oIdx = parseInt(optChip.dataset.oidx, 10);
+    const isMulti = optChip.dataset.multi === '1';
+    handlePrkOptionClick(qId, oIdx, isMulti);
+    return;
+  }
+
+  // Subfilter chip
+  const subChip = e.target.closest('.marks-subfilter-chip[data-prksubtag]');
+  if(subChip){
+    const tag = subChip.dataset.prksubtag;
+    prkState.type = tag;
+    document.querySelectorAll('.marks-subfilter-chip').forEach(c => c.classList.toggle('active', c.dataset.prksubtag === tag));
+    const sel = $('#prkFilterType');
+    if(sel) sel.value = tag;
+    renderPracticeMain();
+    return;
+  }
+
+  // Mobile sidebar overlay
+  if(e.target && e.target.id === 'prkSidebarOverlay'){
+    $('#prkSidebar')?.classList.remove('open');
+    $('#prkSidebarOverlay')?.classList.remove('show');
+    return;
+  }
+
+  const b = e.target.closest('button, .pattern-pill');
+  if(!b) return;
+
+  if(b.id === 'prkBottomCheckBtn'){
+    handlePrkBottomCheck();
+  }
+  else if(b.id === 'prkBottomSolBtn'){
+    handlePrkShowSol();
+  }
+  else if(b.id === 'prkPrevQBtn'){
+    prevDetailQuestion();
+  }
+  else if(b.id === 'prkNextQBtn'){
+    nextDetailQuestion();
+  }
+  else if(b.id === 'prkDetailListBtn' || b.id === 'prkDetailBackToListBtn'){
+    stopPrkQTimer();
+    show('scrPracticeList');
+    renderPracticeMain();
+    const targetRow = document.querySelector('.marks-q-row[data-idx="' + prkCurrentDetailIdx + '"]');
+    if(targetRow) targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  else if(b.id === 'prkZoomInBtn'){
+    setPrkZoom(prkCurrentZoom + 25);
+  }
+  else if(b.id === 'prkZoomOutBtn'){
+    setPrkZoom(prkCurrentZoom - 25);
+  }
+  else if(b.id === 'prkZoomResetBtn'){
+    setPrkZoom(100);
+  }
+  else if(b.closest('#prkDetailBmBtn')){
+    if(!prkFilteredList.length) return;
+    const q = prkFilteredList[prkCurrentDetailIdx];
+    if(q){
+      toggleBm(q.id);
+      const isBm = BM.has(q.id);
+      const btn = $('#prkDetailBmBtn');
+      if(btn) btn.setAttribute('aria-pressed', String(isBm));
+    }
+  }
+  else if(b.closest('#prkDetailRptBtn')){
+    if(!prkFilteredList.length) return;
+    const q = prkFilteredList[prkCurrentDetailIdx];
+    if(q) openReportModal(q.id);
+  }
+  else if(b.id === 'prkSidebarToggle' || b.closest('#prkSidebarToggle')){
+    $('#prkSidebar')?.classList.toggle('open');
+    $('#prkSidebarOverlay')?.classList.toggle('show');
+  }
+  else if(b.id === 'prkResetAttemptBtn'){
+    resetAllPracticeAttempts();
+  }
+  else if(b.closest('#prkDetailSessionPill, #prkTopSessionPill, #prkListSessionPill, #prkHeroSessionStat')){
+    const count = getSessionAttemptedCount();
+    if(count > 0){
+      if(confirm('You have attempted ' + count + ' question' + (count === 1 ? '' : 's') + ' in this session.\n\nReset the session counter to 0?')){
+        resetSessionAttempted();
+      }
+    } else {
+      alert('Session counter: 0 questions attempted so far in this session.');
+    }
+  }
+  else if(b.closest('[data-prksubj]')){
+    const s = b.closest('[data-prksubj]').dataset.prksubj;
+    prkState.subj = s;
+    prkState.chap = null;
+    prkState.sourceGroup = null;
+    renderPracticeScreen();
+    if(window.innerWidth <= 900){
+      $('#prkSidebar')?.classList.remove('open');
+      $('#prkSidebarOverlay')?.classList.remove('show');
+    }
+  }
+  else if(b.closest('#prkSourceTabs [data-prksrcgroup]')){
+    const btn = b.closest('#prkSourceTabs [data-prksrcgroup]');
+    const grp = btn.dataset.prksrcgroup;
+    prkState.chap = null;
+    prkState.sourceGroup = (grp === 'all') ? null : grp;
+    renderPracticeSidebar();
+    renderPracticeFilterYears();
+    renderPracticeMain();
+  }
+  else if(b.closest('.marks-sb-item[data-prkchap]')){
+    const item = b.closest('.marks-sb-item[data-prkchap]');
+    const c = item.dataset.prkchap;
+    const src = item.dataset.prksource || null;
+    if(c === '__ALL__'){
+      prkState.chap = null;
+      prkState.sourceGroup = null;
+    } else if(c === '__ALL_PRIORITY__'){
+      prkState.chap = null;
+      prkState.sourceGroup = 'priority';
+    } else if(c === '__ALL_HCV__'){
+      prkState.chap = null;
+      prkState.sourceGroup = 'hcv';
+    } else if(c === '__ALL_FIITJEE__'){
+      prkState.chap = null;
+      prkState.sourceGroup = 'fiitjee';
+    } else if(c === '__ALL_QRP__'){
+      prkState.chap = null;
+      prkState.sourceGroup = 'qrp';
+    } else if(c === '__ALL_NEERAJ__'){
+      prkState.chap = null;
+      prkState.sourceGroup = 'neeraj';
+    } else if(c === '__ALL_MSCHOUHAN__'){
+      prkState.chap = null;
+      prkState.sourceGroup = 'mschouhan';
+    } else {
+      prkState.chap = c;
+      prkState.sourceGroup = src;
+    }
+    renderPracticeSidebar();
+    renderPracticeFilterYears();
+    renderPracticeMain();
+    if(window.innerWidth <= 900){
+      $('#prkSidebar')?.classList.remove('open');
+      $('#prkSidebarOverlay')?.classList.remove('show');
+    }
+  }
+  else if(b.closest('#prkToggleHideAttempted')){
+    prkState.hideAttempted = !prkState.hideAttempted;
+    const btn = $('#prkToggleHideAttempted');
+    const dot = $('#prkHideDot');
+    if(btn) btn.classList.toggle('active', prkState.hideAttempted);
+    if(dot) dot.style.background = prkState.hideAttempted ? '#fff' : 'var(--line)';
+    renderPracticeMain();
+  }
+  else if(b.id === 'prkResetFiltersBtn'){
+    prkState.paper = 'all';
+    prkState.year = 'all';
+    prkState.type = 'all';
+    prkState.status = 'all';
+    prkState.hideAttempted = false;
+    const btn = $('#prkToggleHideAttempted'), dot = $('#prkHideDot');
+    if(btn) btn.classList.remove('active');
+    if(dot) dot.style.background = 'var(--line)';
+    const fp = $('#prkFilterPaper'), fy = $('#prkFilterYear'), ft = $('#prkFilterType'), fs = $('#prkFilterStatus');
+    if(fp) fp.value = 'all';
+    if(fy) fy.value = 'all';
+    if(ft) ft.value = 'all';
+    if(fs) fs.value = 'all';
+    renderPracticeMain();
+  }
+  else if(b.id === 'prkPracticeFirstBtn'){
+    openPracticeDetail(0);
+  }
+  else if(b.id === 'prkSortBtn'){
+    prkState.sortOrder = prkState.sortOrder === 'asc' ? 'desc' : 'asc';
+    b.innerHTML = prkState.sortOrder === 'asc' ? '&uarr;&darr; Year-wise (Old to New)' : '&uarr;&darr; Year-wise (New to Old)';
+    renderPracticeMain();
+  }
+});
+
+// Dropdown filter change handlers
+document.addEventListener('change', e => {
+  const t = e.target;
+  if(!t) return;
+  if(t.id === 'prkFilterPaper'){
+    prkState.paper = t.value;
+    renderPracticeMain();
+  } else if(t.id === 'prkFilterYear'){
+    prkState.year = t.value;
+    renderPracticeMain();
+  } else if(t.id === 'prkFilterType'){
+    prkState.type = t.value;
+    renderPracticeMain();
+  } else if(t.id === 'prkFilterStatus'){
+    prkState.status = t.value;
+    renderPracticeMain();
+  }
+});
+
+// Auto-boot practice portal on startup
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', () => openPracticeList());
+} else {
+  openPracticeList();
+}
+
 
 function resetAllPracticeAttempts(){
   if(confirm('Reset all your recorded practice attempts in this browser?')){

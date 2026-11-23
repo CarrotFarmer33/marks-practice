@@ -2854,3 +2854,59 @@ mjx-container{max-width:100%;overflow-x:auto;overflow-y:hidden}
   border-color: var(--brand) !important;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
+
+/* Practice Solution & Video Banner */
+.marks-sol-btn {
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--fg);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.marks-sol-btn:hover:not(:disabled) {
+  background: var(--surface);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+.marks-sol-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.marks-hcv-video-banner {
+  margin: 16px 0;
+  padding: 14px 18px;
+  background: var(--surface-2);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.marks-hcv-video-btn {
+  background: #ef4444;
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.marks-hcv-video-btn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
