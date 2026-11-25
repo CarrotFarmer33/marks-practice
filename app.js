@@ -773,6 +773,7 @@ function renderPracticeSidebar(){
   const msQs = inSubj.filter(isMs);
   const nkQs = inSubj.filter(isNk);
   const hcvQs = inSubj.filter(isHcv);
+  const bmQs = inSubj.filter(q => BM.has(q.id));
 
   const byChPriority = {};
   priorityQs.forEach(q => {
@@ -795,6 +796,12 @@ function renderPracticeSidebar(){
   const byChHcv = {};
   hcvQs.forEach(q => { if(q.chapter) byChHcv[q.chapter] = (byChHcv[q.chapter] || 0) + 1; });
 
+  const byChBm = {};
+  bmQs.forEach(q => {
+    const ch = (window.PRIORITY_MAP && window.PRIORITY_MAP[q.id] && window.PRIORITY_MAP[q.id].chapter) || q.chapter;
+    if(ch) byChBm[ch] = (byChBm[ch] || 0) + 1;
+  });
+
   // Update top source tabs active state and visibility based on subject
   document.querySelectorAll('#prkSourceTabs .source-tab-btn').forEach(btn => {
     const grp = btn.dataset.prksrcgroup;
@@ -807,7 +814,7 @@ function renderPracticeSidebar(){
     }
     const isAct = (grp === 'all' && !prkState.sourceGroup) || (grp === prkState.sourceGroup);
     btn.classList.toggle('active', isAct);
-    if(grp === 'priority'){
+    if(grp === 'priority' || grp === 'bookmarks'){
       btn.style.borderColor = isAct ? '#eab308' : 'var(--line)';
       btn.style.background = isAct ? 'rgba(234,179,8,0.15)' : 'var(--surface)';
     }
@@ -820,12 +827,14 @@ function renderPracticeSidebar(){
   const msEl = $('#prkGroupMs');
   const nkEl = $('#prkGroupNk');
   const hcvEl = $('#prkGroupHcv');
+  const bmEl = $('#prkGroupBookmarks');
   const hcvOpen = hcvEl ? (hcvEl.open || prkState.sourceGroup === 'hcv') : (prkState.sourceGroup === 'hcv');
   const priorityOpen = priorityEl ? (priorityEl.open || prkState.sourceGroup === 'priority') : (prkState.sourceGroup === 'priority');
   const fiitjeeOpen = fiitjeeEl ? (fiitjeeEl.open || prkState.sourceGroup === 'fiitjee') : (prkState.sourceGroup === 'fiitjee');
   const qrpOpen = qrpEl ? (qrpEl.open || prkState.sourceGroup === 'qrp') : (prkState.sourceGroup === 'qrp');
   const msOpen = msEl ? (msEl.open || prkState.sourceGroup === 'mschouhan') : (prkState.sourceGroup === 'mschouhan');
   const nkOpen = nkEl ? (nkEl.open || prkState.sourceGroup === 'neeraj') : (prkState.sourceGroup === 'neeraj');
+  const bmOpen = bmEl ? (bmEl.open || prkState.sourceGroup === 'bookmarks') : (prkState.sourceGroup === 'bookmarks');
 
   const ansMap = getPrkAnswers();
   const getProgressHtml = (qs) => {
@@ -846,6 +855,8 @@ function renderPracticeSidebar(){
   if(msBadge) { msBadge.textContent = msQs.length + ' Qs'; msBadge.style.display = msQs.length ? '' : 'none'; }
   const nkBadge = $('#prkNkBadgeCount');
   if(nkBadge) { nkBadge.textContent = nkQs.length + ' Qs'; nkBadge.style.display = nkQs.length ? '' : 'none'; }
+  const bmBadge = $('#prkBookmarksBadgeCount');
+  if(bmBadge) bmBadge.textContent = bmQs.length + ' Qs';
 
   const chapBox = $('#prkChapList');
   if(chapBox){
@@ -1131,6 +1142,44 @@ function renderPracticeSidebar(){
       '</details>';
     }
 
+    // 5. Bookmarks Dropdown Menu
+    if(bmQs.length > 0 || prkState.sourceGroup === 'bookmarks'){
+      const keys = Object.keys(byChBm).sort((a,b) => (TAXONOMY_CHAPTER_ORDER[a] || 99) - (TAXONOMY_CHAPTER_ORDER[b] || 99) || a.localeCompare(b));
+      const isAllBm = !prkState.chap && prkState.sourceGroup === 'bookmarks';
+      const bmProg = getProgressHtml(bmQs);
+
+      chHtml += '<details class="marks-sb-group" id="prkGroupBookmarks"' + (bmOpen ? ' open' : '') + '>' +
+        '<summary class="marks-sb-group-hdr" style="background:rgba(234,179,8,0.08);border-left:3.5px solid #eab308">' +
+          '<span class="marks-sb-group-title" style="color:var(--fg);font-weight:700">' +
+            '<span class="marks-sb-caret">&#9656;</span>' +
+            '<span>&#9733; Bookmarks</span>' +
+          '</span>' +
+          '<span class="marks-sb-count" style="background:#eab308;color:#fff;font-weight:700">' + bmQs.length + '</span>' +
+        '</summary>' +
+        '<div class="marks-sb-sublist">' +
+          '<button type="button" class="marks-sb-item marks-sb-subitem' + (isAllBm ? ' active' : '') + '" data-prkchap="__ALL_BOOKMARKS__" data-prksource="bookmarks">' +
+            '<div class="marks-sb-item-row">' +
+              '<span class="marks-sb-item-name" style="font-weight:600">All Bookmarks</span>' +
+              '<span class="marks-sb-count">' + bmQs.length + '</span>' +
+            '</div>' +
+            bmProg +
+          '</button>' +
+          keys.map(c => {
+            const isAct = prkState.chap === c && prkState.sourceGroup === 'bookmarks';
+            const cQs = bmQs.filter(q => ((window.PRIORITY_MAP && window.PRIORITY_MAP[q.id] && window.PRIORITY_MAP[q.id].chapter) || q.chapter) === c);
+            const cProg = getProgressHtml(cQs);
+            return '<button type="button" class="marks-sb-item marks-sb-subitem' + (isAct ? ' active' : '') + '" data-prkchap="' + esc(c) + '" data-prksource="bookmarks">' +
+              '<div class="marks-sb-item-row">' +
+                '<span class="marks-sb-item-name">' + esc(c) + '</span>' +
+                '<span class="marks-sb-count">' + byChBm[c] + '</span>' +
+              '</div>' +
+              cProg +
+            '</button>';
+          }).join('') +
+        '</div>' +
+      '</details>';
+    }
+
     chapBox.innerHTML = chHtml;
   }
 
@@ -1143,6 +1192,7 @@ function renderPracticeSidebar(){
       : prkState.sourceGroup === 'qrp' ? 'Quizrr QRP'
       : prkState.sourceGroup === 'neeraj' ? 'Neeraj Kumar'
       : prkState.sourceGroup === 'mschouhan' ? 'M.S. Chouhan'
+      : prkState.sourceGroup === 'bookmarks' ? 'Bookmarks'
       : 'All Chapters';
     bcChap.textContent = prkState.chap || sourceLabel;
   }
@@ -1158,41 +1208,48 @@ function renderPracticeSidebar(){
 window.openPracticeList = openPracticeList;
 window.applyPrkChapSearch = applyPrkChapSearch;
 
+function matchesPrkScope(q){
+  if(q.paper === 'allen') return false;
+  if(q.subject !== prkState.subj) return false;
+  if(prkState.sourceGroup === 'priority'){
+    const pInfo = window.PRIORITY_MAP && window.PRIORITY_MAP[q.id];
+    if(!pInfo) return false;
+    const qChap = pInfo.chapter || q.chapter;
+    if(prkState.chap && qChap !== prkState.chap && q.chapter !== prkState.chap) return false;
+  } else if(prkState.sourceGroup === 'fiitjee'){
+    if(window.PRIORITY_MAP && window.PRIORITY_MAP[q.id]) return false;
+    if(q.paper === 'qrp' || (q.id && String(q.id).startsWith('qrp_'))) return false;
+    if(q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_'))) return false;
+    if(q.paper === 'neeraj' || (q.id && String(q.id).startsWith('nk_'))) return false;
+    if(q.paper === 'mschouhan' || (q.id && String(q.id).startsWith('mschouhan_'))) return false;
+    if(prkState.chap && q.chapter !== prkState.chap) return false;
+  } else if(prkState.sourceGroup === 'hcv'){
+    if(q.paper !== 'hcv' && !(q.id && String(q.id).startsWith('HCV_'))) return false;
+    if(prkState.chap && q.chapter !== prkState.chap) return false;
+  } else if(prkState.sourceGroup === 'qrp'){
+    if(q.paper !== 'qrp' && !(q.id && String(q.id).startsWith('qrp_'))) return false;
+    if(prkState.chap && q.chapter !== prkState.chap) return false;
+  } else if(prkState.sourceGroup === 'neeraj'){
+    if(q.paper !== 'neeraj' && !(q.id && String(q.id).startsWith('nk_'))) return false;
+    if(prkState.chap && q.chapter !== prkState.chap) return false;
+  } else if(prkState.sourceGroup === 'mschouhan'){
+    if(q.paper !== 'mschouhan' && !(q.id && String(q.id).startsWith('mschouhan_'))) return false;
+    if(prkState.chap && q.chapter !== prkState.chap) return false;
+  } else if(prkState.sourceGroup === 'bookmarks'){
+    if(!BM.has(q.id)) return false;
+    const pInfo = window.PRIORITY_MAP && window.PRIORITY_MAP[q.id];
+    const qChap = (pInfo && pInfo.chapter) || q.chapter;
+    if(prkState.chap && qChap !== prkState.chap && q.chapter !== prkState.chap) return false;
+  } else {
+    if(prkState.chap && q.chapter !== prkState.chap) return false;
+  }
+  return true;
+}
+
 function renderPracticeFilterYears(){
   const yrSel = $('#prkFilterYear');
   if(!yrSel) return;
-  const inSubj = DB.filter(q => {
-    if(q.paper === 'allen') return false;
-    if(q.subject !== prkState.subj) return false;
-    if(prkState.sourceGroup === 'priority'){
-      const pInfo = window.PRIORITY_MAP && window.PRIORITY_MAP[q.id];
-      if(!pInfo) return false;
-      const qChap = pInfo.chapter || q.chapter;
-      if(prkState.chap && qChap !== prkState.chap && q.chapter !== prkState.chap) return false;
-    } else if(prkState.sourceGroup === 'fiitjee'){
-      if(window.PRIORITY_MAP && window.PRIORITY_MAP[q.id]) return false;
-      if(q.paper === 'qrp' || (q.id && String(q.id).startsWith('qrp_'))) return false;
-      if(q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_'))) return false;
-      if(q.paper === 'neeraj' || (q.id && String(q.id).startsWith('nk_'))) return false;
-      if(q.paper === 'mschouhan' || (q.id && String(q.id).startsWith('mschouhan_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    } else if(prkState.sourceGroup === 'hcv'){
-      if(q.paper !== 'hcv' && !(q.id && String(q.id).startsWith('HCV_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    } else if(prkState.sourceGroup === 'qrp'){
-      if(q.paper !== 'qrp' && !(q.id && String(q.id).startsWith('qrp_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    } else if(prkState.sourceGroup === 'neeraj'){
-      if(q.paper !== 'neeraj' && !(q.id && String(q.id).startsWith('nk_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    } else if(prkState.sourceGroup === 'mschouhan'){
-      if(q.paper !== 'mschouhan' && !(q.id && String(q.id).startsWith('mschouhan_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    } else {
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    }
-    return true;
-  });
+  const inSubj = DB.filter(matchesPrkScope);
   const years = [...new Set(inSubj.map(q => q.year).filter(Boolean))].sort((a,b) => b - a);
 
   let opts = '<option value="all">All Years</option>';
@@ -1205,35 +1262,7 @@ function renderPracticeFilterYears(){
 function getFilteredPracticeQuestions(){
   const ansMap = getPrkAnswers();
   const list = DB.filter(q => {
-    if(q.paper === 'allen') return false;
-    if(q.subject !== prkState.subj) return false;
-    if(prkState.sourceGroup === 'priority'){
-      const pInfo = window.PRIORITY_MAP && window.PRIORITY_MAP[q.id];
-      if(!pInfo) return false;
-      const qChap = pInfo.chapter || q.chapter;
-      if(prkState.chap && qChap !== prkState.chap && q.chapter !== prkState.chap) return false;
-    } else if(prkState.sourceGroup === 'fiitjee'){
-      if(window.PRIORITY_MAP && window.PRIORITY_MAP[q.id]) return false;
-      if(q.paper === 'qrp' || (q.id && String(q.id).startsWith('qrp_'))) return false;
-      if(q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_'))) return false;
-      if(q.paper === 'neeraj' || (q.id && String(q.id).startsWith('nk_'))) return false;
-      if(q.paper === 'mschouhan' || (q.id && String(q.id).startsWith('mschouhan_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    } else if(prkState.sourceGroup === 'hcv'){
-      if(q.paper !== 'hcv' && !(q.id && String(q.id).startsWith('HCV_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    } else if(prkState.sourceGroup === 'qrp'){
-      if(q.paper !== 'qrp' && !(q.id && String(q.id).startsWith('qrp_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    } else if(prkState.sourceGroup === 'neeraj'){
-      if(q.paper !== 'neeraj' && !(q.id && String(q.id).startsWith('nk_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    } else if(prkState.sourceGroup === 'mschouhan'){
-      if(q.paper !== 'mschouhan' && !(q.id && String(q.id).startsWith('mschouhan_'))) return false;
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    } else {
-      if(prkState.chap && q.chapter !== prkState.chap) return false;
-    }
+    if(!matchesPrkScope(q)) return false;
     if(prkState.paper !== 'all'){
       if(prkState.paper === 'qrp'){
         if(q.paper !== 'qrp' && !String(q.id).startsWith('qrp_')) return false;
@@ -1287,7 +1316,8 @@ function renderPracticeMain(){
     fiitjee: 'FIITJEE (AITS)',
     qrp: 'Quizrr QRP',
     neeraj: 'Neeraj Kumar',
-    mschouhan: 'M.S. Chouhan'
+    mschouhan: 'M.S. Chouhan',
+    bookmarks: 'Bookmarks'
   };
   const scopeLabel = prkState.chap || groupNames[prkState.sourceGroup] || 'All Chapters';
   if(topTitle) topTitle.textContent = 'Practice - ' + prkState.subj + ' - ' + scopeLabel;
@@ -1302,35 +1332,7 @@ function renderPracticeMain(){
   let attInScope = 0;
   for(let i = 0; i < DB.length; i++){
     const q = DB[i];
-    if(q.paper === 'allen') continue;
-    if(q.subject !== prkState.subj) continue;
-    if(prkState.sourceGroup === 'priority'){
-      const pInfo = window.PRIORITY_MAP && window.PRIORITY_MAP[q.id];
-      if(!pInfo) continue;
-      const qChap = pInfo.chapter || q.chapter;
-      if(prkState.chap && qChap !== prkState.chap && q.chapter !== prkState.chap) continue;
-    } else if(prkState.sourceGroup === 'fiitjee'){
-      if(window.PRIORITY_MAP && window.PRIORITY_MAP[q.id]) continue;
-      if(q.paper === 'qrp' || (q.id && String(q.id).startsWith('qrp_'))) continue;
-      if(q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_'))) continue;
-      if(q.paper === 'neeraj' || (q.id && String(q.id).startsWith('nk_'))) continue;
-      if(q.paper === 'mschouhan' || (q.id && String(q.id).startsWith('mschouhan_'))) continue;
-      if(prkState.chap && q.chapter !== prkState.chap) continue;
-    } else if(prkState.sourceGroup === 'hcv'){
-      if(q.paper !== 'hcv' && !(q.id && String(q.id).startsWith('HCV_'))) continue;
-      if(prkState.chap && q.chapter !== prkState.chap) continue;
-    } else if(prkState.sourceGroup === 'qrp'){
-      if(q.paper !== 'qrp' && !(q.id && String(q.id).startsWith('qrp_'))) continue;
-      if(prkState.chap && q.chapter !== prkState.chap) continue;
-    } else if(prkState.sourceGroup === 'neeraj'){
-      if(q.paper !== 'neeraj' && !(q.id && String(q.id).startsWith('nk_'))) continue;
-      if(prkState.chap && q.chapter !== prkState.chap) continue;
-    } else if(prkState.sourceGroup === 'mschouhan'){
-      if(q.paper !== 'mschouhan' && !(q.id && String(q.id).startsWith('mschouhan_'))) continue;
-      if(prkState.chap && q.chapter !== prkState.chap) continue;
-    } else {
-      if(prkState.chap && q.chapter !== prkState.chap) continue;
-    }
+    if(!matchesPrkScope(q)) continue;
     totalInScope++;
     if(ansMap[q.id] && ansMap[q.id].status !== 'skip') attInScope++;
   }
@@ -1351,7 +1353,9 @@ function renderPracticeMain(){
     const isLoading = loadingSubjectPromises[prkState.subj] || (!loadedSubjects.has(prkState.subj) && DB.filter(q => q.subject === prkState.subj).length === 0);
     const msg = isLoading
       ? '⏳ Loading ' + prkState.subj + ' questions... Please wait a moment.'
-      : 'No questions match the current filters. Adjust your filters or switch chapters.';
+      : prkState.sourceGroup === 'bookmarks'
+        ? 'No bookmarked questions in ' + prkState.subj + ' match the current filters. Click the ★ icon on any question to bookmark it.'
+        : 'No questions match the current filters. Adjust your filters or switch chapters.';
     cont.innerHTML = '<div class="muted" style="text-align:center;padding:48px 16px;background:var(--surface);border:1px solid var(--line);border-radius:6px">' +
       msg + '</div>';
     return;
@@ -1428,7 +1432,8 @@ function renderPracticeRowHtml(q, idx, passedAnsMap){
   if(q.chapter) metaParts.push('<span>' + esc(q.chapter) + '</span>');
   metaParts.push('<span class="marks-q-badge" style="font-size:11px;padding:1px 6px">' + esc(typeLabel) + '</span>');
   if(q.solution_timeline_url || q.solution_video_url){
-    metaParts.push('<span class="marks-q-badge" style="background:rgba(239,68,68,0.12);color:#dc2626;border-color:rgba(239,68,68,0.25);font-size:11px;padding:1px 6px;font-weight:600">▶ Video Sol</span>');
+    const vUrl = q.solution_timeline_url || q.solution_video_url;
+    metaParts.push('<a href="' + esc(vUrl) + '" target="_blank" rel="noopener noreferrer" class="marks-q-badge" style="background:rgba(239,68,68,0.12);color:#dc2626;border-color:rgba(239,68,68,0.25);font-size:11px;padding:1px 6px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:3px" onclick="event.stopPropagation()" title="Watch Video Solution">▶ Video Sol</a>');
   }
   if(statusBadge) metaParts.push(statusBadge);
 
@@ -1522,12 +1527,13 @@ function renderPracticeDetailView(){
   const qNumEl = $('#prkDetailQNum');
   if(qNumEl) qNumEl.textContent = 'Q ' + (prkCurrentDetailIdx + 1);
 
+  const vidUrl = q.solution_timeline_url || q.solution_video_url;
   const qMetaEl = $('#prkDetailQMeta');
   if(qMetaEl){
     if(isHcv){
       const sec = q.hcv_section || 'Selected';
       const num = q.hcv_qnum ? (' Q' + q.hcv_qnum) : '';
-      const vidTag = (q.solution_timeline_url || q.solution_video_url) ? ' &bull; <span style="background:rgba(239,68,68,0.12);color:#dc2626;padding:2px 8px;border-radius:12px;font-weight:600;font-size:12px">▶ Video Solution' + (q.solution_timestamp ? (' @ ' + esc(q.solution_timestamp)) : '') + '</span>' : '';
+      const vidTag = vidUrl ? ' &bull; <a href="' + esc(vidUrl) + '" target="_blank" rel="noopener noreferrer" class="marks-vid-pill" title="Watch Video Solution at ' + esc(q.solution_timestamp || '') + '">▶ Video Solution' + (q.solution_timestamp ? (' @ ' + esc(q.solution_timestamp)) : '') + ' <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-left:2px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>' : '';
       qMetaEl.innerHTML = '<span style="color:var(--brand);font-weight:700">HC Verma</span> &bull; <span>' + esc(sec + num) + '</span> &bull; <span>' + esc(q.chapter || '') + '</span>' + vidTag;
     } else if(isPri && window.PRIORITY_MAP[q.id]){
       const pInfo = window.PRIORITY_MAP[q.id];
@@ -1536,6 +1542,28 @@ function renderPracticeDetailView(){
       const yrStr = q.year ? (' ' + q.year) : '';
       const src = cleanSourceTag(q) || (paperName + yrStr);
       qMetaEl.textContent = src + (q.chapter ? (' · ' + q.chapter) : '') + ' (' + (q.paragraph ? 'Comprehension' : (QTS[q.type] || q.type)) + ')';
+    }
+  }
+
+  const topVidBtn = $('#prkDetailVideoBtn');
+  if(topVidBtn){
+    if(vidUrl){
+      topVidBtn.href = vidUrl;
+      topVidBtn.style.display = 'inline-flex';
+      topVidBtn.title = 'Watch Video Solution on YouTube' + (q.solution_timestamp ? (' @ ' + q.solution_timestamp) : '');
+    } else {
+      topVidBtn.style.display = 'none';
+    }
+  }
+
+  const bottomVidBtn = $('#prkBottomVideoBtn');
+  if(bottomVidBtn){
+    if(vidUrl){
+      bottomVidBtn.href = vidUrl;
+      bottomVidBtn.style.display = 'inline-flex';
+      bottomVidBtn.title = 'Watch Video Solution on YouTube' + (q.solution_timestamp ? (' @ ' + q.solution_timestamp) : '');
+    } else {
+      bottomVidBtn.style.display = 'none';
     }
   }
 
@@ -1945,6 +1973,11 @@ document.addEventListener('click', e => {
       const qId = bmBtn.dataset.bm || qRow.dataset.prkqid;
       toggleBm(qId);
       bmBtn.setAttribute('aria-pressed', String(BM.has(qId)));
+      renderPracticeSidebar();
+      if(prkState.sourceGroup === 'bookmarks'){
+        renderPracticeFilterYears();
+        renderPracticeMain();
+      }
       return;
     }
     const qId = qRow.dataset.prkqid;
@@ -1999,6 +2032,7 @@ document.addEventListener('click', e => {
   else if(b.id === 'prkDetailListBtn' || b.id === 'prkDetailBackToListBtn'){
     stopPrkQTimer();
     show('scrPracticeList');
+    renderPracticeSidebar();
     renderPracticeMain();
     const targetRow = document.querySelector('.marks-q-row[data-idx="' + prkCurrentDetailIdx + '"]');
     if(targetRow) targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2022,6 +2056,7 @@ document.addEventListener('click', e => {
       const isBm = BM.has(q.id);
       const btn = $('#prkDetailBmBtn');
       if(btn) btn.setAttribute('aria-pressed', String(isBm));
+      renderPracticeSidebar();
     }
   }
   else if(b.closest('#prkDetailRptBtn')){
@@ -2091,6 +2126,9 @@ document.addEventListener('click', e => {
     } else if(c === '__ALL_MSCHOUHAN__'){
       prkState.chap = null;
       prkState.sourceGroup = 'mschouhan';
+    } else if(c === '__ALL_BOOKMARKS__'){
+      prkState.chap = null;
+      prkState.sourceGroup = 'bookmarks';
     } else {
       prkState.chap = c;
       prkState.sourceGroup = src;
