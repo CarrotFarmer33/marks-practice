@@ -554,7 +554,7 @@ function showNote(t){ const n=$('#dbNote'); n.textContent=t; n.hidden=!t; }
 
 /* ---------- screens ---------- */
 function show(id){
-  ['scrPracticeList','scrPracticeDetail'].forEach(s=>{ const el=$('#'+s); if(el) el.hidden = s!==id; });
+  ['scrPracticeList','scrPracticeDetail','scrSaved'].forEach(s=>{ const el=$('#'+s); if(el) el.hidden = s!==id; });
   if(id !== 'scrPracticeDetail' && typeof stopPrkQTimer === 'function') stopPrkQTimer();
   if(id === 'scrTestBuilder' && typeof renderTbArchive === 'function') renderTbArchive();
   if(typeof toggleAcc === 'function') toggleAcc(false);
@@ -773,7 +773,6 @@ function renderPracticeSidebar(){
   const msQs = inSubj.filter(isMs);
   const nkQs = inSubj.filter(isNk);
   const hcvQs = inSubj.filter(isHcv);
-  const bmQs = inSubj.filter(q => BM.has(q.id));
 
   const byChPriority = {};
   priorityQs.forEach(q => {
@@ -796,12 +795,6 @@ function renderPracticeSidebar(){
   const byChHcv = {};
   hcvQs.forEach(q => { if(q.chapter) byChHcv[q.chapter] = (byChHcv[q.chapter] || 0) + 1; });
 
-  const byChBm = {};
-  bmQs.forEach(q => {
-    const ch = (window.PRIORITY_MAP && window.PRIORITY_MAP[q.id] && window.PRIORITY_MAP[q.id].chapter) || q.chapter;
-    if(ch) byChBm[ch] = (byChBm[ch] || 0) + 1;
-  });
-
   // Update top source tabs active state and visibility based on subject
   document.querySelectorAll('#prkSourceTabs .source-tab-btn').forEach(btn => {
     const grp = btn.dataset.prksrcgroup;
@@ -814,7 +807,7 @@ function renderPracticeSidebar(){
     }
     const isAct = (grp === 'all' && !prkState.sourceGroup) || (grp === prkState.sourceGroup);
     btn.classList.toggle('active', isAct);
-    if(grp === 'priority' || grp === 'bookmarks'){
+    if(grp === 'priority'){
       btn.style.borderColor = isAct ? '#eab308' : 'var(--line)';
       btn.style.background = isAct ? 'rgba(234,179,8,0.15)' : 'var(--surface)';
     }
@@ -827,14 +820,12 @@ function renderPracticeSidebar(){
   const msEl = $('#prkGroupMs');
   const nkEl = $('#prkGroupNk');
   const hcvEl = $('#prkGroupHcv');
-  const bmEl = $('#prkGroupBookmarks');
   const hcvOpen = hcvEl ? (hcvEl.open || prkState.sourceGroup === 'hcv') : (prkState.sourceGroup === 'hcv');
   const priorityOpen = priorityEl ? (priorityEl.open || prkState.sourceGroup === 'priority') : (prkState.sourceGroup === 'priority');
   const fiitjeeOpen = fiitjeeEl ? (fiitjeeEl.open || prkState.sourceGroup === 'fiitjee') : (prkState.sourceGroup === 'fiitjee');
   const qrpOpen = qrpEl ? (qrpEl.open || prkState.sourceGroup === 'qrp') : (prkState.sourceGroup === 'qrp');
   const msOpen = msEl ? (msEl.open || prkState.sourceGroup === 'mschouhan') : (prkState.sourceGroup === 'mschouhan');
   const nkOpen = nkEl ? (nkEl.open || prkState.sourceGroup === 'neeraj') : (prkState.sourceGroup === 'neeraj');
-  const bmOpen = bmEl ? (bmEl.open || prkState.sourceGroup === 'bookmarks') : (prkState.sourceGroup === 'bookmarks');
 
   const ansMap = getPrkAnswers();
   const getProgressHtml = (qs) => {
@@ -855,8 +846,6 @@ function renderPracticeSidebar(){
   if(msBadge) { msBadge.textContent = msQs.length + ' Qs'; msBadge.style.display = msQs.length ? '' : 'none'; }
   const nkBadge = $('#prkNkBadgeCount');
   if(nkBadge) { nkBadge.textContent = nkQs.length + ' Qs'; nkBadge.style.display = nkQs.length ? '' : 'none'; }
-  const bmBadge = $('#prkBookmarksBadgeCount');
-  if(bmBadge) bmBadge.textContent = bmQs.length + ' Qs';
 
   const chapBox = $('#prkChapList');
   if(chapBox){
@@ -1142,44 +1131,6 @@ function renderPracticeSidebar(){
       '</details>';
     }
 
-    // 5. Bookmarks Dropdown Menu
-    if(bmQs.length > 0 || prkState.sourceGroup === 'bookmarks'){
-      const keys = Object.keys(byChBm).sort((a,b) => (TAXONOMY_CHAPTER_ORDER[a] || 99) - (TAXONOMY_CHAPTER_ORDER[b] || 99) || a.localeCompare(b));
-      const isAllBm = !prkState.chap && prkState.sourceGroup === 'bookmarks';
-      const bmProg = getProgressHtml(bmQs);
-
-      chHtml += '<details class="marks-sb-group" id="prkGroupBookmarks"' + (bmOpen ? ' open' : '') + '>' +
-        '<summary class="marks-sb-group-hdr" style="background:rgba(234,179,8,0.08);border-left:3.5px solid #eab308">' +
-          '<span class="marks-sb-group-title" style="color:var(--fg);font-weight:700">' +
-            '<span class="marks-sb-caret">&#9656;</span>' +
-            '<span>&#9733; Bookmarks</span>' +
-          '</span>' +
-          '<span class="marks-sb-count" style="background:#eab308;color:#fff;font-weight:700">' + bmQs.length + '</span>' +
-        '</summary>' +
-        '<div class="marks-sb-sublist">' +
-          '<button type="button" class="marks-sb-item marks-sb-subitem' + (isAllBm ? ' active' : '') + '" data-prkchap="__ALL_BOOKMARKS__" data-prksource="bookmarks">' +
-            '<div class="marks-sb-item-row">' +
-              '<span class="marks-sb-item-name" style="font-weight:600">All Bookmarks</span>' +
-              '<span class="marks-sb-count">' + bmQs.length + '</span>' +
-            '</div>' +
-            bmProg +
-          '</button>' +
-          keys.map(c => {
-            const isAct = prkState.chap === c && prkState.sourceGroup === 'bookmarks';
-            const cQs = bmQs.filter(q => ((window.PRIORITY_MAP && window.PRIORITY_MAP[q.id] && window.PRIORITY_MAP[q.id].chapter) || q.chapter) === c);
-            const cProg = getProgressHtml(cQs);
-            return '<button type="button" class="marks-sb-item marks-sb-subitem' + (isAct ? ' active' : '') + '" data-prkchap="' + esc(c) + '" data-prksource="bookmarks">' +
-              '<div class="marks-sb-item-row">' +
-                '<span class="marks-sb-item-name">' + esc(c) + '</span>' +
-                '<span class="marks-sb-count">' + byChBm[c] + '</span>' +
-              '</div>' +
-              cProg +
-            '</button>';
-          }).join('') +
-        '</div>' +
-      '</details>';
-    }
-
     chapBox.innerHTML = chHtml;
   }
 
@@ -1192,7 +1143,6 @@ function renderPracticeSidebar(){
       : prkState.sourceGroup === 'qrp' ? 'Quizrr QRP'
       : prkState.sourceGroup === 'neeraj' ? 'Neeraj Kumar'
       : prkState.sourceGroup === 'mschouhan' ? 'M.S. Chouhan'
-      : prkState.sourceGroup === 'bookmarks' ? 'Bookmarks'
       : 'All Chapters';
     bcChap.textContent = prkState.chap || sourceLabel;
   }
@@ -1235,11 +1185,6 @@ function matchesPrkScope(q){
   } else if(prkState.sourceGroup === 'mschouhan'){
     if(q.paper !== 'mschouhan' && !(q.id && String(q.id).startsWith('mschouhan_'))) return false;
     if(prkState.chap && q.chapter !== prkState.chap) return false;
-  } else if(prkState.sourceGroup === 'bookmarks'){
-    if(!BM.has(q.id)) return false;
-    const pInfo = window.PRIORITY_MAP && window.PRIORITY_MAP[q.id];
-    const qChap = (pInfo && pInfo.chapter) || q.chapter;
-    if(prkState.chap && qChap !== prkState.chap && q.chapter !== prkState.chap) return false;
   } else {
     if(prkState.chap && q.chapter !== prkState.chap) return false;
   }
@@ -1316,8 +1261,7 @@ function renderPracticeMain(){
     fiitjee: 'FIITJEE (AITS)',
     qrp: 'Quizrr QRP',
     neeraj: 'Neeraj Kumar',
-    mschouhan: 'M.S. Chouhan',
-    bookmarks: 'Bookmarks'
+    mschouhan: 'M.S. Chouhan'
   };
   const scopeLabel = prkState.chap || groupNames[prkState.sourceGroup] || 'All Chapters';
   if(topTitle) topTitle.textContent = 'Practice - ' + prkState.subj + ' - ' + scopeLabel;
@@ -1353,9 +1297,7 @@ function renderPracticeMain(){
     const isLoading = loadingSubjectPromises[prkState.subj] || (!loadedSubjects.has(prkState.subj) && DB.filter(q => q.subject === prkState.subj).length === 0);
     const msg = isLoading
       ? '⏳ Loading ' + prkState.subj + ' questions... Please wait a moment.'
-      : prkState.sourceGroup === 'bookmarks'
-        ? 'No bookmarked questions in ' + prkState.subj + ' match the current filters. Click the ★ icon on any question to bookmark it.'
-        : 'No questions match the current filters. Adjust your filters or switch chapters.';
+      : 'No questions match the current filters. Adjust your filters or switch chapters.';
     cont.innerHTML = '<div class="muted" style="text-align:center;padding:48px 16px;background:var(--surface);border:1px solid var(--line);border-radius:6px">' +
       msg + '</div>';
     return;
@@ -1973,11 +1915,6 @@ document.addEventListener('click', e => {
       const qId = bmBtn.dataset.bm || qRow.dataset.prkqid;
       toggleBm(qId);
       bmBtn.setAttribute('aria-pressed', String(BM.has(qId)));
-      renderPracticeSidebar();
-      if(prkState.sourceGroup === 'bookmarks'){
-        renderPracticeFilterYears();
-        renderPracticeMain();
-      }
       return;
     }
     const qId = qRow.dataset.prkqid;
@@ -2032,7 +1969,6 @@ document.addEventListener('click', e => {
   else if(b.id === 'prkDetailListBtn' || b.id === 'prkDetailBackToListBtn'){
     stopPrkQTimer();
     show('scrPracticeList');
-    renderPracticeSidebar();
     renderPracticeMain();
     const targetRow = document.querySelector('.marks-q-row[data-idx="' + prkCurrentDetailIdx + '"]');
     if(targetRow) targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2056,7 +1992,6 @@ document.addEventListener('click', e => {
       const isBm = BM.has(q.id);
       const btn = $('#prkDetailBmBtn');
       if(btn) btn.setAttribute('aria-pressed', String(isBm));
-      renderPracticeSidebar();
     }
   }
   else if(b.closest('#prkDetailRptBtn')){
@@ -2126,9 +2061,6 @@ document.addEventListener('click', e => {
     } else if(c === '__ALL_MSCHOUHAN__'){
       prkState.chap = null;
       prkState.sourceGroup = 'mschouhan';
-    } else if(c === '__ALL_BOOKMARKS__'){
-      prkState.chap = null;
-      prkState.sourceGroup = 'bookmarks';
     } else {
       prkState.chap = c;
       prkState.sourceGroup = src;
@@ -2173,6 +2105,75 @@ document.addEventListener('click', e => {
     b.innerHTML = prkState.sortOrder === 'asc' ? '&uarr;&darr; Year-wise (Old to New)' : '&uarr;&darr; Year-wise (New to Old)';
     renderPracticeMain();
   }
+  else if(b.id === 'openSaved'){
+    svChap = null;
+    svSource = 'all';
+    svPaper = 'all';
+    svYear = 'all';
+    svPick();
+    show('scrSaved');
+    renderSaved();
+    ensureSubjectLoaded(svSubj).then(() => {
+      if(!$('#scrSaved').hidden) renderSaved();
+    });
+  }
+  else if(b.id === 'svBack'){
+    if(svChap){ svChap = null; renderSaved(); }
+    else { show('scrPracticeList'); renderPracticeMain(); }
+  }
+  else if(b.dataset.svtab){
+    svTab = b.dataset.svtab;
+    svChap = null; svSource = 'all'; svPaper = 'all'; svYear = 'all';
+    svPick();
+    renderSaved();
+  }
+  else if(b.dataset.svsubj){
+    svSubj = b.dataset.svsubj;
+    svChap = null; svSource = 'all'; svPaper = 'all'; svYear = 'all';
+    renderSaved();
+    ensureSubjectLoaded(svSubj).then(() => {
+      if(!$('#scrSaved').hidden) renderSaved();
+    });
+  }
+  else if(b.dataset.svchap){
+    svChap = b.dataset.svchap;
+    svPaper = 'all'; svYear = 'all';
+    renderSaved();
+    window.scrollTo(0, 0);
+  }
+  else if(b.id === 'svUp'){
+    svChap = null;
+    renderSaved();
+  }
+  else if(b.dataset.svsource){
+    svSource = b.dataset.svsource;
+    renderSaved();
+  }
+  else if(b.dataset.svpaper){
+    svPaper = b.dataset.svpaper;
+    renderSaved();
+  }
+  else if(b.dataset.svrm){
+    svIds().delete(b.dataset.svrm);
+    saveSet(svTab === 'bm' ? 'aits_bookmarks' : 'aits_mistakes', svIds());
+    renderSaved();
+  }
+  else if(b.id === 'svClear'){
+    if(svIds().size && confirm('Clear this whole list?')){
+      svIds().clear();
+      saveSet(svTab === 'bm' ? 'aits_bookmarks' : 'aits_mistakes', svIds());
+      renderSaved();
+    }
+  }
+  else if(b.id === 'svPractice'){
+    const qs = svChap ? svQuestions() : svAll().filter(q => q.subject === svSubj && (svSource === 'all' || svGetSource(q) === svSource));
+    if(!qs.length) return;
+    prkFilteredList = qs;
+    openPracticeDetail(qs[0].id);
+  }
+  else if(b.dataset.rpt){
+    openReportModal(b.dataset.rpt);
+  }
 });
 
 // Dropdown filter change handlers
@@ -2191,6 +2192,9 @@ document.addEventListener('change', e => {
   } else if(t.id === 'prkFilterStatus'){
     prkState.status = t.value;
     renderPracticeMain();
+  } else if(t.id === 'svYearSel'){
+    svYear = t.value;
+    renderSaved();
   }
 });
 
@@ -2201,6 +2205,138 @@ if(document.readyState === 'loading'){
   openPracticeList();
 }
 
+
+/* ---------- saved questions (cbt4aits format) ---------- */
+let svTab='bm', svSubj='Physics', svChap=null, svPaper='all', svSource='all', svYear='all';
+function svIds(){ return svTab==='bm' ? BM : MIS; }
+function svAll(){ const m=new Map(DB.map(q=>[q.id,q])); return [...svIds()].map(id=>m.get(id)).filter(Boolean); }
+function svGetSource(q){
+  if(window.PRIORITY_MAP && window.PRIORITY_MAP[q.id]) return 'priority';
+  if(q.paper === 'hcv' || (q.id && String(q.id).startsWith('HCV_'))) return 'hcv';
+  if(q.paper === 'qrp' || (q.id && String(q.id).startsWith('qrp_'))) return 'qrp';
+  if(q.paper === 'mschouhan' || (q.id && String(q.id).startsWith('mschouhan_'))) return 'mschouhan';
+  if(q.paper === 'neeraj' || (q.id && String(q.id).startsWith('nk_'))) return 'neeraj';
+  return 'fiitjee';
+}
+const SV_SOURCE_LABELS = {
+  all: 'All sources',
+  priority: 'Selected Bank',
+  fiitjee: 'FIITJEE (AITS)',
+  hcv: 'HC Verma',
+  qrp: 'Quizrr QRP',
+  mschouhan: 'M.S. Chouhan',
+  neeraj: 'Neeraj Kumar'
+};
+function svPick(){
+  const all=svAll();
+  if(!all.some(q=>q.subject===svSubj)){
+    const s=SUBJ.find(x=>all.some(q=>q.subject===x));
+    if(s) svSubj=s;
+  }
+}
+function svOrder(subj,ch){
+  if(String(ch).startsWith('QRP ')){
+    const m = String(ch).match(/QRP\s*(\d+)/i);
+    if(m) return 1000 + parseInt(m[1], 10);
+    return 1500;
+  }
+  if(window.CHAPTER_ORDER && window.CHAPTER_ORDER[subj]){
+    const i = window.CHAPTER_ORDER[subj].indexOf(ch);
+    if(i >= 0) return i;
+  }
+  return 999;
+}
+function svQuestions(){
+  return svAll().filter(q =>
+    q.subject === svSubj &&
+    (!svChap || q.chapter === svChap) &&
+    (svSource === 'all' || svGetSource(q) === svSource) &&
+    (svPaper === 'all' || q.paper === svPaper) &&
+    (svYear === 'all' || String(q.year) === svYear)
+  );
+}
+const svCard = q => {
+  let ob = '';
+  const imgs = q.images || [];
+  const solImgs = q.solImages || [];
+  const hasImgs = imgs.length > 0;
+  const isMatch = q.isMatch || isMatchQuestion(q);
+  const hasReal = hasRealOptions(q.options);
+  const showOptDesc = !q.labelOnly && (!hasImgs || isMatch || hasReal);
+  if(q.type !== 'numerical' && q.options){
+    ob = '<div style="display:flex;flex-direction:column;gap:6px">' + q.options.map((o, k) => {
+      const corr = q.keyOk && q.ans && q.ans.includes(k);
+      return '<div class="ropt' + (corr ? ' corr' : '') + '"><b>' + LET[k] + '.</b><span style="min-width:0;overflow-wrap:anywhere">' + (showOptDesc ? rich(o) : '') + '</span></div>';
+    }).join('') + '</div>';
+  }
+  const srcTag = cleanSourceTag(q) || q.paperTitle || svSourceLabel(svGetSource(q));
+  const paperLbl = q.paper === 'main' ? 'JEE Main' : (q.paper === 'adv' ? 'JEE Advanced' : svSourceLabel(svGetSource(q)));
+  return '<article class="rv"><header>' +
+    '<span>' + esc(QTS[q.type] || q.type) + '</span>' +
+    '<span>' + esc(paperLbl) + (q.year ? ' ' + esc(q.year) : '') + '</span>' +
+    '<span>' + esc(srcTag) + '</span>' +
+    '<span style="margin-left:auto;display:inline-flex;gap:6px">' +
+      '<button class="btn sm report-btn" data-rpt="' + esc(q.id) + '" type="button" style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;font-size:12px' + (isQuestionReported(q.id) ? ';color:#d32f2f;border-color:#d32f2f' : '') + '" title="Report issue with this question">🚩 ' + (isQuestionReported(q.id) ? 'Reported' : 'Report') + '</button>' +
+      '<button class="btn sm" data-svrm="' + esc(q.id) + '" type="button">Remove</button>' +
+    '</span></header>' +
+    (!hasImgs ? '<div class="qtext">' + rich(stripWatermarks(q.text)) + '</div>' : '') +
+    imgs.map(u => imageMarkup(u, 'Question figure', 'practice-svg', q.crop)).join('') + ob +
+    '<div>Correct answer: <b>' + esc(keyText(q)) + '</b></div>' +
+    ((q.solution || solImgs.length)
+      ? '<details open><summary style="cursor:pointer;font-weight:600;margin-top:8px">Solution</summary><div style="margin-top:8px">' + rich(q.solution) + solImgs.map(u => imageMarkup(u, 'Solution figure', 'practice-svg')).join('') + '</div></details>'
+      : '<details open><summary style="cursor:pointer;font-weight:600;margin-top:8px">Solution</summary><div class="muted" style="margin-top:8px;font-size:13px">Official Answer Key: <b>' + esc(keyText(q)) + '</b><br><span style="opacity:0.8">Step-by-step worked solution image was not provided in the original paper archive.</span></div></details>') +
+    '</article>';
+};
+function svSourceLabel(src){ return SV_SOURCE_LABELS[src] || src; }
+function renderSaved(){
+  const all = svAll(), subs = SUBJ.filter(s => DB.some(q => q.subject === s) || all.some(q => q.subject === s));
+  if(subs.length && !subs.includes(svSubj)) svSubj = subs[0];
+  const cnt = s => all.filter(q => q.subject === s).length;
+  const btn = (attr, val, label, on) => '<button class="btn sm" data-' + attr + '="' + esc(val) + '" aria-pressed="' + on + '" type="button">' + label + '</button>';
+  let h = '<div class="svtabs">' + btn('svtab', 'bm', 'Bookmarked (' + BM.size + ')', svTab === 'bm') + btn('svtab', 'mis', 'Mistakes (' + MIS.size + ')', svTab === 'mis') + '<button class="btn sm" id="svClear" type="button" style="margin-left:auto">Clear this list</button></div>';
+  h += '<div class="svtabs">' + (subs.length ? subs : SUBJ).map(s => btn('svsubj', s, esc(s) + ' (' + cnt(s) + ')', svSubj === s)).join('') + '</div>';
+  const inSubj = all.filter(q => q.subject === svSubj);
+  const srcBase = svChap ? inSubj.filter(q => q.chapter === svChap) : inSubj;
+  const srcCounts = { priority: 0, fiitjee: 0, hcv: 0, qrp: 0, mschouhan: 0, neeraj: 0 };
+  srcBase.forEach(q => { const s = svGetSource(q); srcCounts[s] = (srcCounts[s] || 0) + 1; });
+  if(svSource !== 'all' && !srcCounts[svSource]) svSource = 'all';
+  const srcKeys = Object.keys(srcCounts).filter(k => srcCounts[k] > 0);
+  if(srcKeys.length > 0){
+    h += '<div class="svtabs">' + btn('svsource', 'all', 'All sources (' + srcBase.length + ')', svSource === 'all') +
+      srcKeys.map(k => btn('svsource', k, esc(svSourceLabel(k)) + ' (' + srcCounts[k] + ')', svSource === k)).join('') + '</div>';
+  }
+  const empty = svTab === 'bm'
+    ? 'No bookmarks here yet. Use the star on a question while practicing.'
+    : 'No mistakes here yet. Questions you get wrong are saved here.';
+  let qs = [];
+  if(!svChap){
+    const filteredInSubj = inSubj.filter(q => svSource === 'all' || svGetSource(q) === svSource);
+    const g = {};
+    filteredInSubj.forEach(q => { g[q.chapter] = (g[q.chapter] || 0) + 1; });
+    const keys = Object.keys(g).sort((a, b) => svOrder(svSubj, a) - svOrder(svSubj, b) || a.localeCompare(b));
+    h += keys.length
+      ? '<div class="svchaps">' + keys.map(c => '<button class="svchap" data-svchap="' + esc(c) + '" type="button"><span>' + esc(c) + '</span><b>' + g[c] + '</b></button>').join('') + '</div>'
+      : '<div class="muted">' + empty + '</div>';
+    qs = filteredInSubj;
+  } else {
+    const inCh = inSubj.filter(q => q.chapter === svChap && (svSource === 'all' || svGetSource(q) === svSource));
+    if(!inCh.length){ svChap = null; return renderSaved(); }
+    const years = [...new Set(inCh.map(q => q.year).filter(Boolean))].sort((a, b) => b - a);
+    if(svYear !== 'all' && !years.map(String).includes(svYear)) svYear = 'all';
+    const pc = { main: 0, adv: 0 };
+    inCh.forEach(q => { if(pc[q.paper] != null) pc[q.paper]++; });
+    h += '<div class="svtabs"><button class="btn sm" id="svUp" type="button">&larr; All chapters</button><b style="align-self:center">' + esc(svChap) + '</b></div>';
+    h += '<div class="svtabs">' + [['all', 'All papers'], ['main', 'JEE Main (' + pc.main + ')'], ['adv', 'JEE Advanced (' + pc.adv + ')']].map(x => btn('svpaper', x[0], x[1], svPaper === x[0])).join('') +
+      '<select id="svYearSel" aria-label="Year" class="btn sm"><option value="all">All years</option>' + years.map(y => '<option value="' + y + '"' + (svYear === String(y) ? ' selected' : '') + '>' + y + '</option>').join('') + '</select></div>';
+    qs = svQuestions();
+    h += '<div id="svCards" style="display:flex;flex-direction:column;gap:12px">' + (qs.length ? qs.map(svCard).join('') : '<div class="muted">Nothing matches these filters.</div>') + '</div>';
+  }
+  $('#svBody').innerHTML = h;
+  $('#svPractice').disabled = !qs.length;
+  $('#svPractice').textContent = svChap ? 'Practice this chapter' : 'Practice ' + svSubj;
+  hydrateZipImages($('#svBody'));
+  typeset($('#svBody'));
+}
 
 function resetAllPracticeAttempts(){
   if(confirm('Reset all your recorded practice attempts in this browser?')){

@@ -24,7 +24,7 @@
 <body>
 
 <div id="scrPracticeList" class="screen" hidden>
-  <div class="topbar"><div class="tb-in"><span class="tb-title" id="prkTopbarTitle">Practice &ndash; Questions</span><div style="display:flex;align-items:center;gap:8px"><div class="marks-detail-session-pill" id="prkListSessionPill" title="Questions attempted this session (click to reset)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Session: <b id="prkListSessionCount">0</b> attempted</span></div><button class="btn sm" id="prkResetAttemptBtn" type="button" style="font-size:12px">Reset Attempts</button><button class="btn sm" id="clearAppCache" type="button" style="color:var(--muted)">⚡ Clear Cache</button></div></div></div>
+  <div class="topbar"><div class="tb-in"><span class="tb-title" id="prkTopbarTitle">Practice &ndash; Questions</span><div style="display:flex;align-items:center;gap:8px"><button class="btn sm" id="openSaved" type="button" title="View bookmarked &amp; mistake questions">&#9733; Bookmarks</button><div class="marks-detail-session-pill" id="prkListSessionPill" title="Questions attempted this session (click to reset)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Session: <b id="prkListSessionCount">0</b> attempted</span></div><button class="btn sm" id="prkResetAttemptBtn" type="button" style="font-size:12px">Reset Attempts</button><button class="btn sm" id="clearAppCache" type="button" style="color:var(--muted)">⚡ Clear Cache</button></div></div></div>
 
   <!-- Mobile sidebar overlay -->
   <div class="prk-sidebar-overlay" id="prkSidebarOverlay"></div>
@@ -91,10 +91,6 @@
         <button type="button" class="source-tab-btn" data-prksrcgroup="neeraj" style="display:none">
           <span style="font-weight:700">Neeraj Kumar</span>
           <span class="pill-check" id="prkNkBadgeCount" style="background:var(--brand);color:#fff;border:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;width:auto;height:auto;display:none"></span>
-        </button>
-        <button type="button" class="source-tab-btn" data-prksrcgroup="bookmarks">
-          <span style="font-weight:700">&#9733; Bookmarks</span>
-          <span class="pill-check" id="prkBookmarksBadgeCount" style="background:#eab308;color:#fff;border:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;width:auto;height:auto">0 Qs</span>
         </button>
       </div>
 
@@ -224,6 +220,12 @@
       <button class="marks-nav-btn" id="prkNextQBtn" type="button">Next &rarr;</button>
     </div>
   </div>
+</div>
+
+<div id="scrSaved" class="screen" hidden>
+  <div class="topbar"><div class="tb-in"><span class="tb-title">Saved questions</span>
+    <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" id="svPractice" type="button">Practice these</button><button class="btn sm" id="svBack" type="button">Back</button></span></div></div>
+  <main class="wrap res" id="svBody"></main>
 </div>
 
 
