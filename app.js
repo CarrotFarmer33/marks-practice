@@ -1463,8 +1463,7 @@ function renderPracticeDetailView(){
   const breadcrumbEl = $('#prkDetailBreadcrumb');
   if(breadcrumbEl){
     const chapPart = prkState.chap || (isPri && window.PRIORITY_MAP[q.id] ? window.PRIORITY_MAP[q.id].chapter : q.chapter);
-    const rightPart = chapPart || prkState.subj || '';
-    breadcrumbEl.innerHTML = esc(paperName) + (rightPart ? ('<span class="marks-qv-bc-sep">&gt;&gt;</span>' + esc(rightPart)) : '');
+    breadcrumbEl.textContent = paperName + (chapPart ? (' >> ' + chapPart) : (' >> ' + prkState.subj));
   }
 
   const qNumEl = $('#prkDetailQNum');
@@ -1547,17 +1546,16 @@ function renderPracticeDetailView(){
   }
   const checkBtn = $('#prkBottomCheckBtn');
   if(checkBtn){
-    checkBtn.style.background = '';
-    checkBtn.style.color = '';
-    checkBtn.style.border = '';
     if(savedAns){
       checkBtn.textContent = 'Clear & Try Again';
-      checkBtn.classList.add('is-retry');
-      checkBtn.disabled = false;
+      checkBtn.style.background = 'var(--surface-2)';
+      checkBtn.style.color = 'var(--fg)';
+      checkBtn.style.border = '1px solid var(--line)';
     } else {
       checkBtn.textContent = 'Check Answer';
-      checkBtn.classList.remove('is-retry');
-      checkBtn.disabled = true;
+      checkBtn.style.background = '#2563eb';
+      checkBtn.style.color = '#fff';
+      checkBtn.style.border = 'none';
     }
   }
 
@@ -1775,21 +1773,7 @@ function handlePrkOptionClick(qId, oIdx, isMulti){
     const optEl = card.querySelector('.marks-opt-chip[data-oidx="' + oIdx + '"]');
     if(optEl) optEl.classList.toggle('selected');
   }
-
-  const checkBtn = $('#prkBottomCheckBtn');
-  if(checkBtn){
-    checkBtn.disabled = card.querySelectorAll('.marks-opt-chip.selected').length === 0;
-  }
 }
-
-document.addEventListener('input', e => {
-  if(e.target && e.target.matches('input[data-prknuminput]')){
-    const checkBtn = $('#prkBottomCheckBtn');
-    if(checkBtn){
-      checkBtn.disabled = e.target.value.trim().length === 0;
-    }
-  }
-});
 
 function handlePrkBottomCheck(){
   if(!prkFilteredList.length) return;
@@ -2014,43 +1998,6 @@ document.addEventListener('click', e => {
     if(!prkFilteredList.length) return;
     const q = prkFilteredList[prkCurrentDetailIdx];
     if(q) openReportModal(q.id);
-  }
-  else if(b.id === 'qv_settings_cta' || b.closest('#qv_settings_cta')){
-    const count = getSessionAttemptedCount();
-    const q = prkFilteredList[prkCurrentDetailIdx];
-    const isRpt = q ? isQuestionReported(q.id) : false;
-    openModal(
-      '<div style="background:#1f2329;color:#fff;padding:4px 2px">' +
-        '<h3 style="margin:0 0 14px;font-size:16px;font-weight:600">Question Settings</h3>' +
-        '<div style="display:flex;flex-direction:column;gap:10px">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#16191d;border:1px solid #32373e;border-radius:10px">' +
-            '<span style="font-size:13.5px;color:#bfc5d4">Session Attempted: <strong style="color:#fff">' + count + '</strong></span>' +
-            '<button type="button" class="btn sm" id="qvResetSessionBtn" style="background:#252e3a;color:#60a5fa;border:1px solid #60a5fa;border-radius:8px;padding:4px 10px;cursor:pointer">Reset</button>' +
-          '</div>' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#16191d;border:1px solid #32373e;border-radius:10px">' +
-            '<span style="font-size:13.5px;color:#bfc5d4">Diagram Zoom: <strong id="qvModalZoomVal" style="color:#fff">' + prkCurrentZoom + '%</strong></span>' +
-            '<div style="display:flex;gap:6px">' +
-              '<button type="button" class="btn sm" id="qvZoomOutBtn" style="background:#222830;color:#fff;border:1px solid #3f4650;border-radius:6px;padding:4px 10px;cursor:pointer">&minus;</button>' +
-              '<button type="button" class="btn sm" id="qvZoomInBtn" style="background:#222830;color:#fff;border:1px solid #3f4650;border-radius:6px;padding:4px 10px;cursor:pointer">&plus;</button>' +
-            '</div>' +
-          '</div>' +
-          (q ? '<button type="button" class="btn sm" id="qvReportQBtn" style="width:100%;padding:10px;background:#222830;color:' + (isRpt ? '#f87171' : '#fff') + ';border:1px solid #3f4650;border-radius:10px;cursor:pointer">' + (isRpt ? 'Reported' : 'Report Question') + '</button>' : '') +
-          '<button type="button" class="btn sm" id="qvCloseSettingsBtn" style="width:100%;padding:10px;background:#60a5fa;color:#16191d;font-weight:600;border:none;border-radius:10px;cursor:pointer">Done</button>' +
-        '</div>' +
-      '</div>',
-      () => {
-        const rs = document.getElementById('qvResetSessionBtn');
-        if(rs) rs.onclick = () => { resetSessionAttempted(); closeModal(); };
-        const zi = document.getElementById('qvZoomInBtn');
-        if(zi) zi.onclick = () => { setPrkZoom(prkCurrentZoom + 25); const zv = document.getElementById('qvModalZoomVal'); if(zv) zv.textContent = prkCurrentZoom + '%'; };
-        const zo = document.getElementById('qvZoomOutBtn');
-        if(zo) zo.onclick = () => { setPrkZoom(prkCurrentZoom - 25); const zv = document.getElementById('qvModalZoomVal'); if(zv) zv.textContent = prkCurrentZoom + '%'; };
-        const rq = document.getElementById('qvReportQBtn');
-        if(rq && q) rq.onclick = () => { closeModal(); openReportModal(q.id); };
-        const cl = document.getElementById('qvCloseSettingsBtn');
-        if(cl) cl.onclick = closeModal;
-      }
-    );
   }
   else if(b.id === 'prkSidebarToggle' || b.closest('#prkSidebarToggle')){
     $('#prkSidebar')?.classList.toggle('open');
